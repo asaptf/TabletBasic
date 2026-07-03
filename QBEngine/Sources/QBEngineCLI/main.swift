@@ -5,7 +5,7 @@ if CommandLine.arguments.contains("--school") {
     await runSchoolProbe()
 }
 
-let parser = ProgramParser()
+var parser = ProgramParser()
 var failures = 0
 
 print("Validating \(SampleProgramLibrary.all.count) sample programs...")

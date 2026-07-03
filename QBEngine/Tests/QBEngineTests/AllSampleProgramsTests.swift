@@ -5,8 +5,8 @@ import XCTest
 /// Source of truth: SampleProgramLibrary (same data the app ships).
 final class AllSampleProgramsTests: XCTestCase {
     func testLibraryContainsEightyPrograms() {
-        XCTAssertEqual(SampleProgramLibrary.programCount, 80)
-        XCTAssertEqual(SampleProgramLibrary.all.count, 80)
+        XCTAssertEqual(SampleProgramLibrary.programCount, 81)
+        XCTAssertEqual(SampleProgramLibrary.all.count, 81)
     }
 
     func testSampleProgramFilenamesAreUnique() {
@@ -27,7 +27,7 @@ final class AllSampleProgramsTests: XCTestCase {
     }
 
     func testEverySampleProgramParses() throws {
-        let parser = ProgramParser()
+        var parser = ProgramParser()
         for program in SampleProgramLibrary.all {
             let source = BasicSourceNormalizer.normalize(program.code)
             XCTAssertNoThrow(try parser.parse(source: source), program.filename)

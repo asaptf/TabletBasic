@@ -3,12 +3,14 @@ import Foundation
 public struct ExpressionParser {
     private var tokens: [Token]
     var pos: Int = 0
+    private let knownFunctions: Set<String>
 
-    public init(tokens: [Token]) {
+    public init(tokens: [Token], knownFunctions: Set<String> = []) {
         self.tokens = tokens.filter { token in
             if case .newline = token.kind { return false }
             return true
         }
+        self.knownFunctions = knownFunctions
     }
 
     public mutating func parseExpression() throws -> Expr {
@@ -163,10 +165,11 @@ public struct ExpressionParser {
                 advance()
                 let (name, qbType) = splitTypeSuffix(rawName)
                 if match(.lparen) {
-                    if qbType != .variant && !Self.builtinFunctions.contains(name.uppercased()) {
-                        return try parseArrayAccess(name: name, type: qbType)
+                    let upper = name.uppercased()
+                    if knownFunctions.contains(upper) || Self.builtinFunctions.contains(upper) || qbType == .variant {
+                        return .function(name, try parseArgumentList())
                     }
-                    return .function(name, try parseArgumentList())
+                    return try parseArrayAccess(name: name, type: qbType)
                 }
                 return .variable(name, qbType)
             case .keyword(let keyword):

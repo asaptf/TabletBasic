@@ -125,7 +125,7 @@ final class TabletBasicTests: XCTestCase {
 
     @MainActor
     func testEverySampleProgramNormalizesAndParses() throws {
-        let parser = ProgramParser()
+        var parser = ProgramParser()
         for program in SampleProgramLibrary.all {
             let normalized = BasicSourceNormalizer.normalize(program.code)
             XCTAssertNoThrow(try parser.parse(source: normalized), program.filename)
@@ -133,12 +133,12 @@ final class TabletBasicTests: XCTestCase {
     }
 
     func testSampleLibraryHasEightyPrograms() {
-        XCTAssertEqual(SampleProgramLibrary.programCount, 80)
-        XCTAssertEqual(SampleProgramLibrary.all.count, 80)
+        XCTAssertEqual(SampleProgramLibrary.programCount, 81)
+        XCTAssertEqual(SampleProgramLibrary.all.count, 81)
     }
 
     func testEveryLessonHasValidStarterCode() throws {
-        let parser = ProgramParser()
+        var parser = ProgramParser()
         for lesson in LessonCatalog.all {
             let normalized = BasicSourceNormalizer.normalize(lesson.starterCode)
             XCTAssertNoThrow(

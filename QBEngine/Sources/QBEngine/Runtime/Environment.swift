@@ -1,9 +1,19 @@
 import Foundation
 
+private enum VariableBinding {
+    case stored(QBValue, QBType)
+    case alias(String)
+}
+
+private struct VariableScope {
+    var bindings: [String: VariableBinding] = [:]
+}
+
 public final class Environment: @unchecked Sendable {
     private var scalars: [String: QBValue] = [:]
     private var arrays: [String: QBArray] = [:]
     private var defaultTypes: [Character: QBType] = [:]
+    private var scopeStack: [VariableScope] = []
     private var dataItems: [QBValue] = []
     private var dataPointer: Int = 0
     private var dataLineStarts: [(line: Int, index: Int)] = []
@@ -28,23 +38,83 @@ public final class Environment: @unchecked Sendable {
         }
     }
 
-    public func getVariable(_ name: String) throws -> QBValue {
-        let key = name.uppercased()
-        if let value = scalars[key] { return value }
-        let type = defaultType(for: key)
-        switch type {
-        case .integer: return .integer(0)
-        case .long: return .long(0)
-        case .single: return .single(0)
-        case .double: return .double(0)
-        case .string: return .string("")
-        case .variant: return .integer(0)
-        }
+    public func pushScope() {
+        scopeStack.append(VariableScope())
     }
 
-    public func setVariable(_ name: String, value: QBValue, type: QBType) {
+    public func popScope() {
+        guard !scopeStack.isEmpty else { return }
+        scopeStack.removeLast()
+    }
+
+    public func bindParameter(name: String, type: QBType, aliasTo variable: String) {
         let key = name.uppercased()
+        guard !scopeStack.isEmpty else { return }
+        scopeStack[scopeStack.count - 1].bindings[key] = .alias(variable.uppercased())
+    }
+
+    public func bindParameter(name: String, type: QBType, value: QBValue) {
+        let key = name.uppercased()
+        guard !scopeStack.isEmpty else { return }
+        scopeStack[scopeStack.count - 1].bindings[key] = .stored(coerce(value, to: type), type)
+    }
+
+    public func getVariable(_ name: String) throws -> QBValue {
+        let key = name.uppercased()
+        if let value = try resolveScopedVariable(key) {
+            return value
+        }
+        if let value = scalars[key] { return value }
+        let type = defaultType(for: key)
+        return defaultValue(for: type)
+    }
+
+    public func setVariable(_ name: String, value: QBValue, type: QBType) throws {
+        let key = name.uppercased()
+        if try setScopedVariable(key, value: value, type: type) {
+            return
+        }
         scalars[key] = coerce(value, to: type)
+    }
+
+    private func resolveScopedVariable(_ key: String, visited: Set<String> = []) throws -> QBValue? {
+        guard !visited.contains(key) else {
+            throw QBError.runtime("Circular parameter alias for '\(key)'")
+        }
+        var nextVisited = visited
+        nextVisited.insert(key)
+
+        for scope in scopeStack.reversed() {
+            guard let binding = scope.bindings[key] else { continue }
+            switch binding {
+            case .stored(let value, _):
+                return value
+            case .alias(let target):
+                if let value = try resolveScopedVariable(target, visited: nextVisited) {
+                    return value
+                }
+                if let value = scalars[target] {
+                    return value
+                }
+                return defaultValue(for: defaultType(for: target))
+            }
+        }
+        return nil
+    }
+
+    private func setScopedVariable(_ key: String, value: QBValue, type: QBType) throws -> Bool {
+        for index in stride(from: scopeStack.count - 1, through: 0, by: -1) {
+            guard let binding = scopeStack[index].bindings[key] else { continue }
+            switch binding {
+            case .stored(_, let storedType):
+                scopeStack[index].bindings[key] = .stored(coerce(value, to: storedType), storedType)
+                return true
+            case .alias(let target):
+                try setVariable(target, value: value, type: type)
+                return true
+            }
+        }
+        return false
     }
 
     public func getArray(_ name: String, indices: [Int]) throws -> QBValue {

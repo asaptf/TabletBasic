@@ -1,7 +1,7 @@
 import Foundation
 
 public final class QBInterpreter: @unchecked Sendable {
-    private let parser = ProgramParser()
+    private var parser = ProgramParser()
     public let executor = Executor()
     public private(set) var lastError: String?
 

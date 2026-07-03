@@ -42,7 +42,7 @@ public enum ProgramCategory: String, CaseIterable, Identifiable, Sendable {
 }
 
 public enum SampleProgramLibrary {
-    public static let programCount = 80
+    public static let programCount = 81
 
     public static let all: [SampleProgram] =
         BasicsPrograms.all

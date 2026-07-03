@@ -121,6 +121,29 @@ enum SubroutinesPrograms {
             200 PRINT "  Push B"
             210 RETURN
             """
+        ),
+        SampleProgram(
+            id: "32-subfunc",
+            filename: "SUBFUNC.BAS",
+            title: "SUB and FUNCTION",
+            category: .subroutines,
+            description: "Modern procedures with CALL and function return values.",
+            smokeTestMarker: "Sum is15",
+            code: """
+            ' SUBFUNC.BAS - SUB and FUNCTION
+            CALL ShowMsg("TabletBasic")
+            TOTAL% = Sum%(5, 10)
+            PRINT "Sum is"; TOTAL%
+            END
+
+            SUB ShowMsg (TEXT$)
+                PRINT "Hello from"; TEXT$
+            END SUB
+
+            FUNCTION Sum% (A%, B%)
+                Sum% = A% + B%
+            END FUNCTION
+            """
         )
     ]
 }

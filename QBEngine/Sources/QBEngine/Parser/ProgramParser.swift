@@ -1,14 +1,49 @@
 import Foundation
 
 public struct ProgramParser {
+    private var activeProcedures: Set<String> = []
+    private var activeFunctions: Set<String> = []
+
     public init() {}
 
-    public func parse(source: String) throws -> ParsedProgram {
+    public mutating func parse(source: String) throws -> ParsedProgram {
         let physicalLines = source
             .replacingOccurrences(of: "\r\n", with: "\n")
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
 
+        let (mainLines, procedureDefs) = try ProcedureExtractor.extract(from: physicalLines)
+        let procedureMap = Dictionary(
+            uniqueKeysWithValues: procedureDefs.map { ($0.name.uppercased(), $0) }
+        )
+        activeProcedures = Set(procedureMap.keys)
+        activeFunctions = Set(
+            procedureMap.values
+                .filter { $0.kind == .function }
+                .map(\.name)
+        )
+        let programLines = try parsePhysicalLines(mainLines, lineOffset: 0)
+        return ParsedProgram(lines: programLines, procedures: procedureMap)
+    }
+
+    mutating func parsePhysicalLines(
+        _ physicalLines: [String],
+        lineOffset: Int,
+        knownProcedures: Set<String>? = nil,
+        knownFunctions: Set<String>? = nil
+    ) throws -> [ProgramLine] {
+        let savedProcedures = activeProcedures
+        let savedFunctions = activeFunctions
+        if let knownProcedures {
+            activeProcedures = knownProcedures
+        }
+        if let knownFunctions {
+            activeFunctions = knownFunctions
+        }
+        defer {
+            activeProcedures = savedProcedures
+            activeFunctions = savedFunctions
+        }
         var programLines: [ProgramLine] = []
         var index = 0
         while index < physicalLines.count {
@@ -58,16 +93,21 @@ public struct ProgramParser {
                 continue
             }
 
-            var parser = LineParser(tokens: tokens, sourceLine: index + 1)
+            var parser = LineParser(
+                tokens: tokens,
+                sourceLine: lineOffset + index + 1,
+                knownProcedures: activeProcedures,
+                knownFunctions: activeFunctions
+            )
             let line = try parser.parseLine()
             programLines.append(line)
             index += 1
         }
 
-        return ParsedProgram(lines: programLines)
+        return programLines
     }
 
-    private func parseIfBlock(_ lines: [String], start: Int) throws -> (Statement, Int) {
+    func parseIfBlock(_ lines: [String], start: Int) throws -> (Statement, Int) {
         let header = lines[start].trimmingCharacters(in: .whitespaces)
         let headerTokens = tokenizeLine(header)
         var headerParser = LineParser(tokens: headerTokens, sourceLine: start + 1)
@@ -183,7 +223,7 @@ public struct ProgramParser {
         if bodyUpper.hasPrefix("IS ") {
             let compareBody = body.dropFirst(3).trimmingCharacters(in: .whitespaces)
             let tokens = tokenizeLine(String(compareBody))
-            var parser = ExpressionParser(tokens: tokens)
+            var parser = ExpressionParser(tokens: tokens, knownFunctions: activeFunctions)
             let (op, rhs, consumed) = try parser.parseCaseIsComparison()
             if consumed < tokens.count {
                 throw QBError.syntax("Unexpected tokens after CASE IS comparison")
@@ -197,7 +237,7 @@ public struct ProgramParser {
 
     private func parseCommaSeparatedExpressions(_ source: String) throws -> [Expr] {
         let tokens = tokenizeLine(source)
-        var parser = ExpressionParser(tokens: tokens)
+        var parser = ExpressionParser(tokens: tokens, knownFunctions: activeFunctions)
         var values: [Expr] = []
         repeat {
             values.append(try parser.parseExpression())
@@ -209,7 +249,12 @@ public struct ProgramParser {
         var statements: [Statement] = []
         for (offset, line) in lines.enumerated() {
             let tokens = tokenizeLine(line)
-            var parser = LineParser(tokens: tokens, sourceLine: sourceLine + offset)
+            var parser = LineParser(
+                tokens: tokens,
+                sourceLine: sourceLine + offset,
+                knownProcedures: activeProcedures,
+                knownFunctions: activeFunctions
+            )
             repeat {
                 statements.append(try parser.parseStatement())
             } while parser.takeColonIfPresent()
@@ -231,10 +276,19 @@ private struct LineParser {
     private var tokens: [Token]
     private var pos: Int = 0
     private let sourceLine: Int
+    private let knownProcedures: Set<String>
+    private let knownFunctions: Set<String>
 
-    init(tokens: [Token], sourceLine: Int) {
+    init(
+        tokens: [Token],
+        sourceLine: Int,
+        knownProcedures: Set<String> = [],
+        knownFunctions: Set<String> = []
+    ) {
         self.tokens = tokens
         self.sourceLine = sourceLine
+        self.knownProcedures = knownProcedures
+        self.knownFunctions = knownFunctions
     }
 
     mutating func parseLine() throws -> ProgramLine {
@@ -335,7 +389,14 @@ private struct LineParser {
             if matchKeyword(.for) { return .exitFor }
             if matchKeyword(.do) { return .exitDo }
             if matchKeyword(.while) { return .exitWhile }
-            throw QBError.syntax("EXIT must be followed by FOR, DO, or WHILE")
+            if matchKeyword(.sub) { return .exitSub }
+            if matchKeyword(.function) { return .exitFunction }
+            throw QBError.syntax("EXIT must be followed by FOR, DO, WHILE, SUB, or FUNCTION")
+        }
+
+        if case .keyword(.call) = token.kind {
+            advance()
+            return try parseProcedureCall()
         }
 
         if case .keyword(.goto) = token.kind {
@@ -462,6 +523,17 @@ private struct LineParser {
         if case .keyword(.sleep) = token.kind {
             advance()
             return .sleep(try parseExpression())
+        }
+
+        if case .identifier(let rawName) = token.kind {
+            let (name, _) = splitTypeSuffix(rawName)
+            if knownProcedures.contains(name),
+               !knownFunctions.contains(name),
+               !check(.equals) {
+                advance()
+                let args = try parseProcedureArguments()
+                return .callProcedure(name, args)
+            }
         }
 
         let target = try parseAssignable()
@@ -694,6 +766,33 @@ private struct LineParser {
         return vars
     }
 
+    private mutating func parseProcedureCall() throws -> Statement {
+        guard case .identifier(let rawName)? = peek()?.kind else {
+            throw QBError.syntax("Expected procedure name after CALL at line \(sourceLine)")
+        }
+        advance()
+        let (name, _) = splitTypeSuffix(rawName)
+        let args = try parseProcedureArguments()
+        return .callProcedure(name, args)
+    }
+
+    private mutating func parseProcedureArguments() throws -> [Expr] {
+        var args: [Expr] = []
+        if match(.lparen) {
+            if !check(.rparen) {
+                repeat {
+                    args.append(try parseExpression())
+                } while match(.comma)
+            }
+            try consume(.rparen, message: "Expected ')' after arguments")
+        } else if !isAtEnd() && !check(.colon) {
+            repeat {
+                args.append(try parseExpression())
+            } while match(.comma)
+        }
+        return args
+    }
+
     private mutating func parseAssignable() throws -> Expr {
         guard case .identifier(let rawName)? = peek()?.kind else {
             throw QBError.syntax("Expected variable name at line \(sourceLine)")
@@ -841,7 +940,10 @@ private struct LineParser {
     }
 
     private mutating func parseExpression() throws -> Expr {
-        var parser = ExpressionParser(tokens: Array(tokens.dropFirst(pos)))
+        var parser = ExpressionParser(
+            tokens: Array(tokens.dropFirst(pos)),
+            knownFunctions: knownFunctions
+        )
         let expr = try parser.parseExpression()
         let consumed = parser.consumedCount
         pos += consumed
@@ -959,7 +1061,7 @@ private extension Array {
     }
 }
 
-private func splitTypeSuffix(_ rawName: String) -> (String, QBType) {
+func splitTypeSuffix(_ rawName: String) -> (String, QBType) {
     guard let last = rawName.last, let suffix = TypeSuffix(rawValue: String(last)) else {
         return (rawName.uppercased(), .variant)
     }

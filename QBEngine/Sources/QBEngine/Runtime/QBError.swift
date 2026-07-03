@@ -8,6 +8,8 @@ public enum QBError: Error, Equatable, Sendable, LocalizedError {
     case breakLoop
     case breakDo
     case breakWhile
+    case exitSub
+    case exitFunction
 
     public var errorDescription: String? {
         switch self {
@@ -18,6 +20,8 @@ public enum QBError: Error, Equatable, Sendable, LocalizedError {
         case .breakLoop: return nil
         case .breakDo: return nil
         case .breakWhile: return nil
+        case .exitSub: return nil
+        case .exitFunction: return nil
         }
     }
 }

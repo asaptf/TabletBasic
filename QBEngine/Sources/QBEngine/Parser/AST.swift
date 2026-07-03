@@ -94,6 +94,9 @@ public indirect enum Statement: Sendable {
     case sleep(Expr)
     case assign(Expr, Expr)
     case selectCase(Expr, [CaseClause])
+    case callProcedure(String, [Expr])
+    case exitSub
+    case exitFunction
 }
 
 public indirect enum DoMode: Sendable {
@@ -117,9 +120,11 @@ public struct ProgramLine: Sendable {
 public struct ParsedProgram: Sendable {
     public let lines: [ProgramLine]
     public let lineIndex: [Int: Int]
+    public let procedures: [String: ProcedureDef]
 
-    public init(lines: [ProgramLine]) {
+    public init(lines: [ProgramLine], procedures: [String: ProcedureDef] = [:]) {
         self.lines = lines
+        self.procedures = procedures
         var index: [Int: Int] = [:]
         for (i, line) in lines.enumerated() {
             if let num = line.lineNumber {
