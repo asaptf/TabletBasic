@@ -121,25 +121,22 @@ private struct ProgramDetailPane: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(program.filename)
-                        .font(.title2.bold())
+                        .font(QBTheme.monoTitle)
+                        .foregroundStyle(QBTheme.editorBackground)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(QBTheme.menuText.opacity(0.92))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     Text(program.title)
                         .font(.headline)
-                        .foregroundStyle(.secondary)
                     Text(program.description)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
-                Text(program.code)
-                    .font(QBTheme.monoFont)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
+                BasicCodePreview(code: program.code)
 
                 actionButtons
             }
@@ -148,35 +145,82 @@ private struct ProgramDetailPane: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    @ViewBuilder
     private var actionButtons: some View {
-        let buttons = Group {
-            Button("Load into Editor") {
+        HStack(spacing: 10) {
+            SampleActionButton(title: "Load", icon: "doc.text", style: .primary) {
                 viewModel.loadSampleProgram(program)
                 onClose()
             }
-            .buttonStyle(.borderedProminent)
 
-            Button("Load && Run") {
+            SampleActionButton(title: "Load & Run", icon: "play.fill", style: .accent) {
                 viewModel.loadSampleProgram(program)
                 onClose()
                 viewModel.runProgram()
             }
-            .buttonStyle(.bordered)
             .accessibilityIdentifier("loadAndRun")
 
-            Button("Cancel") { onClose() }
-                .buttonStyle(.bordered)
+            SampleActionButton(title: "Cancel", icon: "xmark", style: .secondary) {
+                onClose()
+            }
         }
+    }
+}
 
-        if LayoutMetrics.isCompact(horizontalSizeClass) {
-            VStack(spacing: 10) {
-                buttons
+private struct SampleActionButton: View {
+    enum Style {
+        case primary, accent, secondary
+    }
+
+    let title: String
+    let icon: String
+    let style: Style
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .bold))
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-        } else {
-            HStack(spacing: 12) {
-                buttons
-            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 11)
+            .foregroundStyle(foreground)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var foreground: Color {
+        switch style {
+        case .primary: .white
+        case .accent: Color(red: 0.05, green: 0.08, blue: 0.2)
+        case .secondary: QBTheme.menuText.opacity(0.9)
+        }
+    }
+
+    private var background: Color {
+        switch style {
+        case .primary: Color(red: 0.1, green: 0.35, blue: 0.85)
+        case .accent: Color(red: 0.95, green: 0.88, blue: 0.35)
+        case .secondary: Color(red: 0.05, green: 0.1, blue: 0.35)
+        }
+    }
+
+    private var border: Color {
+        switch style {
+        case .primary: Color.white.opacity(0.35)
+        case .accent: Color.white.opacity(0.55)
+        case .secondary: QBTheme.menuText.opacity(0.25)
         }
     }
 }

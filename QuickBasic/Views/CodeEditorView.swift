@@ -144,7 +144,7 @@ private struct BasicTextEditor: UIViewRepresentable {
         context.coordinator.applyStyledText(
             to: textView,
             text: text,
-            selection: NSRange(location: 0, length: 0)
+            selection: textView.selectedRange
         )
         context.coordinator.reportSelection(in: textView)
     }
@@ -164,10 +164,9 @@ private struct BasicTextEditor: UIViewRepresentable {
         }
 
         func applyStyledText(to textView: UITextView, text: String, selection: NSRange) {
-            let attributes = EditorTypography.attributedString(
+            let attributes = BasicSyntaxHighlighter.attributedString(
                 from: text,
                 font: parent.font,
-                textColor: parent.textColor,
                 lineHeight: parent.lineHeight
             )
             textView.attributedText = attributes
@@ -189,7 +188,10 @@ private struct BasicTextEditor: UIViewRepresentable {
         }
 
         func textViewDidChange(_ textView: UITextView) {
-            parent.text = textView.text
+            let selection = textView.selectedRange
+            let plainText = textView.text ?? ""
+            parent.text = plainText
+            applyStyledText(to: textView, text: plainText, selection: selection)
             reportSelection(in: textView)
         }
 
