@@ -55,13 +55,39 @@ final class TabletBasicUITests: XCTestCase {
         let yBefore = statusBar.frame.origin.y
 
         app.revealMainMenuIfNeeded()
-        app.buttons["menuFile"].tap()
+        let menuFile = app.buttons["menuFile"]
+        if menuFile.waitForExistence(timeout: 1) {
+            menuFile.tap()
+        }
         XCTAssertTrue(app.buttons["menuItem_File_Open Sample Program..."].waitForExistence(timeout: 2))
 
         let yDuringMenu = statusBar.frame.origin.y
         XCTAssertEqual(yBefore, yDuringMenu, accuracy: 1.0, "Status bar shifted when menu opened")
 
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.6)).tap()
+    }
+
+    func testCompactMenuItemsAreHittable() throws {
+        try dismissWelcome()
+
+        let overflow = app.buttons["menuOverflow"]
+        guard overflow.waitForExistence(timeout: 2) else {
+            throw XCTSkip("Regular menu layout — compact overflow not shown")
+        }
+
+        overflow.tap()
+        let newFile = app.buttons["menuItem_File_New..."].firstMatch
+        XCTAssertTrue(newFile.waitForExistence(timeout: 3))
+        XCTAssertTrue(newFile.isHittable, "Menu items should be tappable above the document title")
+
+        let about = app.buttons["menuItem_Help_About"].firstMatch
+        XCTAssertTrue(about.waitForExistence(timeout: 3))
+        XCTAssertTrue(about.isHittable, "All menu items should be visible without scrolling")
+
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "Compact Menu Open"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func dismissWelcome() throws {

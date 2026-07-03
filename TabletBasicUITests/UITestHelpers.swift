@@ -3,10 +3,15 @@ import XCTest
 extension XCUIApplication {
     func revealMainMenuIfNeeded() {
         let overflow = buttons["menuOverflow"]
-        if overflow.waitForExistence(timeout: 1) {
-            if !buttons["menuItem_Run_Start"].firstMatch.isHittable {
+        guard overflow.waitForExistence(timeout: 1) else { return }
+
+        let usesCompactMenu = !buttons["menuFile"].exists
+        if usesCompactMenu {
+            if !buttons["menuItem_File_New..."].firstMatch.isHittable {
                 overflow.tap()
             }
+        } else if !buttons["menuItem_Run_Start"].firstMatch.isHittable {
+            overflow.tap()
         }
     }
 

@@ -28,4 +28,27 @@ enum LayoutMetrics {
         }
         return nil
     }
+
+    static let compactMenuSectionHeaderHeight: CGFloat = 22
+    static let compactMenuItemRowHeight: CGFloat = 23
+    static let compactMenuSeparatorHeight: CGFloat = 7
+    static let compactBottomChromeHeight: CGFloat = 88
+
+    static func compactOverflowContentHeight(
+        sectionCount: Int,
+        itemCount: Int,
+        separatorCount: Int
+    ) -> CGFloat {
+        CGFloat(sectionCount) * compactMenuSectionHeaderHeight
+            + CGFloat(itemCount) * compactMenuItemRowHeight
+            + CGFloat(separatorCount) * compactMenuSeparatorHeight
+    }
+
+    static func compactOverflowAvailableHeight(
+        screenHeight: CGFloat,
+        menuHeaderHeight: CGFloat,
+        safeAreaTop: CGFloat
+    ) -> CGFloat {
+        screenHeight - safeAreaTop - menuHeaderHeight - compactBottomChromeHeight
+    }
 }

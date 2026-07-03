@@ -2,7 +2,8 @@ scheme("TabletBasic")
 project("TabletBasic.xcodeproj")
 
 devices([
-  "iPad Pro (12.9-inch) (6th generation)"
+  "iPhone 17 Pro Max",
+  "iPad Pro 13-inch (M4)"
 ])
 
 languages([

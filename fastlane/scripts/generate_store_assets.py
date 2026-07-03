@@ -56,11 +56,20 @@ MONO_SMALL = font(28, mono=True)
 MONO_BOLD = font(36, bold=True, mono=True)
 CAPTION = font(56, bold=True)
 BODY = font(38)
+PHONE_TITLE = font(64, bold=True)
+PHONE_CAPTION = font(38, bold=True)
+PHONE_BODY = font(28)
+PHONE_MENU = font(19, mono=True)
+PHONE_MONO = font(25, mono=True)
+PHONE_MONO_SMALL = font(20, mono=True)
+PHONE_MONO_BOLD = font(27, bold=True, mono=True)
 
 
 def ensure_dirs() -> None:
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
+    for path in SCREENSHOT_DIR.glob("*.png"):
+        path.unlink()
 
 
 def text_size(draw: ImageDraw.ImageDraw, text: str, fnt: ImageFont.FreeTypeFont) -> tuple[int, int]:
@@ -125,7 +134,7 @@ def screenshot_welcome() -> None:
     draw = ImageDraw.Draw(source)
     draw_caption(
         draw,
-        "Retro BASIC for iPad",
+        "Retro BASIC for iPhone & iPad",
         "A fast, focused place to learn programming one line at a time.",
     )
     source.save(SCREENSHOT_DIR / "01_IPAD_PRO_3GEN_129_welcome.png", optimize=True)
@@ -299,6 +308,165 @@ def screenshot_lessons() -> None:
     image.save(SCREENSHOT_DIR / "05_IPAD_PRO_3GEN_129_lessons.png", optimize=True)
 
 
+def draw_phone_caption(draw: ImageDraw.ImageDraw, title: str, subtitle: str | None = None) -> None:
+    draw.rounded_rectangle((56, 172, 1264, 398), radius=24, fill=(0, 0, 112), outline=(98, 175, 255), width=3)
+    draw.text((92, 202), title, font=PHONE_CAPTION, fill=WHITE)
+    if subtitle:
+        y = 268
+        for line in wrap_text(draw, subtitle, PHONE_BODY, 1120)[:3]:
+            draw.text((94, y), line, font=PHONE_BODY, fill=MUTED)
+            y += 36
+
+
+def draw_phone_shell(title: str = "Untitled") -> Image.Image:
+    image = Image.new("RGB", (1320, 2868), BLUE)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, 1320, 96), fill=(0, 0, 170))
+    draw.text((40, 42), "09:41", font=PHONE_MENU, fill=WHITE)
+    draw.text((1102, 42), "Wi-Fi  100%", font=PHONE_MENU, fill=WHITE)
+    draw.text((36, 116), "File   Run   Help", font=PHONE_MENU, fill=WHITE)
+    center_text(draw, (0, 144, 1320, 188), title, PHONE_MENU, WHITE)
+    draw.rectangle((0, 2680, 1320, 2738), fill=BLUE_DARK, outline=(82, 91, 226), width=2)
+    draw.text((20, 2692), ">", font=PHONE_MONO, fill=WHITE)
+    draw.rectangle((0, 2738, 1320, 2868), fill=BLUE_STATUS)
+    draw.text((28, 2782), "F1=Help   Enter=Run   Esc=Back", font=PHONE_MENU, fill=WHITE)
+    draw.text((1100, 2782), "Immediate", font=PHONE_MENU, fill=WHITE)
+    return image
+
+
+def phone_welcome() -> None:
+    image = draw_phone_shell("Untitled")
+    draw = ImageDraw.Draw(image)
+    draw_phone_caption(
+        draw,
+        "Retro BASIC on iOS",
+        "A friendly coding workspace for iPhone and iPad.",
+    )
+    dialog = (170, 1150, 1150, 1564)
+    draw.rectangle(dialog, fill=PANEL, outline=INK, width=4)
+    center_text(draw, (dialog[0], dialog[1] + 44, dialog[2], dialog[1] + 96), "Welcome to", PHONE_MONO, INK)
+    center_text(draw, (dialog[0], dialog[1] + 112, dialog[2], dialog[1] + 172), "TabletBasic Version 1.0", PHONE_MONO_BOLD, INK)
+    center_text(draw, (dialog[0], dialog[1] + 194, dialog[2], dialog[1] + 254), "Type. Run. Learn.", PHONE_MONO, INK)
+    center_text(draw, (dialog[0], dialog[1] + 304, dialog[2], dialog[1] + 362), "< Press Enter to open lessons >", PHONE_MONO_SMALL, INK)
+    image.save(SCREENSHOT_DIR / "01_IPHONE_69_welcome.png", optimize=True)
+
+
+def phone_editor() -> None:
+    image = draw_phone_shell("HELLO.BAS")
+    draw = ImageDraw.Draw(image)
+    draw_phone_caption(draw, "Write BASIC anywhere", "Small programs fit naturally on iPhone.")
+    code = [
+        "10 REM HELLO.BAS",
+        "20 PRINT \"HELLO, WORLD!\"",
+        "30 FOR I% = 1 TO 5",
+        "40   PRINT \"LINE\"; I%",
+        "50 NEXT I%",
+        "60 END",
+    ]
+    x, y = 72, 560
+    for line in code:
+        draw.text((x, y), line, font=PHONE_MONO_BOLD if line.startswith("10") else PHONE_MONO, fill=WHITE)
+        y += 58
+
+    box = (64, 1110, 1256, 1554)
+    draw.rounded_rectangle(box, radius=10, fill=(0, 0, 132), outline=(126, 175, 255), width=3)
+    draw.text((104, 1164), "Program Output", font=PHONE_MONO_BOLD, fill=YELLOW)
+    y = 1232
+    for line in ["HELLO, WORLD!", "LINE 1", "LINE 2", "LINE 3", "LINE 4", "LINE 5"]:
+        draw.text((104, y), line, font=PHONE_MONO, fill=WHITE)
+        y += 45
+    image.save(SCREENSHOT_DIR / "02_IPHONE_69_editor.png", optimize=True)
+
+
+def phone_samples() -> None:
+    image = draw_phone_shell("Sample Programs")
+    draw = ImageDraw.Draw(image)
+    draw_phone_caption(draw, "20 sample programs", "Open examples for loops, math, data, and graphics.")
+    panel = (70, 560, 1250, 2100)
+    draw.rounded_rectangle(panel, radius=8, fill=PANEL, outline=INK, width=4)
+    draw.text((112, 618), "Sample Programs", font=PHONE_TITLE, fill=INK)
+
+    items = [
+        ("HELLO.BAS", "Hello World"),
+        ("FORLOOP.BAS", "FOR...NEXT Loop"),
+        ("DATAREAD.BAS", "DATA & READ"),
+        ("DICE.BAS", "Random Numbers"),
+        ("SHAPES.BAS", "Basic Shapes"),
+    ]
+    y = 736
+    for i, (name, label) in enumerate(items):
+        fill = BLUE if i == 4 else PANEL
+        text_fill = WHITE if i == 4 else INK
+        draw.rectangle((104, y - 14, 1216, y + 92), fill=fill)
+        draw.text((136, y), name, font=PHONE_MONO_BOLD, fill=text_fill)
+        draw.text((136, y + 42), label, font=PHONE_MONO_SMALL, fill=text_fill)
+        y += 124
+
+    draw.line((104, 1394, 1216, 1394), fill=(190, 194, 205), width=3)
+    draw.text((136, 1440), "SHAPES.BAS", font=PHONE_MONO_BOLD, fill=INK)
+    code = ["SCREEN 13", "CLS", "CIRCLE (160,100),60,4", "LINE (100,160)-(220,160),2", "PRINT \"Shapes drawn!\""]
+    y = 1510
+    for line in code:
+        draw.text((136, y), line, font=PHONE_MONO, fill=INK)
+        y += 50
+    draw.rounded_rectangle((136, 1878, 530, 1970), radius=10, fill=(0, 102, 210))
+    center_text(draw, (136, 1878, 530, 1970), "Load & Run", PHONE_BODY, WHITE)
+    image.save(SCREENSHOT_DIR / "03_IPHONE_69_samples.png", optimize=True)
+
+
+def phone_graphics() -> None:
+    image = draw_phone_shell("MOIRE.BAS")
+    draw = ImageDraw.Draw(image)
+    draw_phone_caption(draw, "Pocket graphics lab", "Draw with SCREEN, LINE, CIRCLE, PSET, and COLOR.")
+    canvas = (92, 560, 1228, 1540)
+    draw.rounded_rectangle(canvas, radius=10, fill=(3, 16, 22), outline=GREEN, width=5)
+    cx, cy = 660, 1050
+    colors = [(87, 245, 200), (255, 216, 103), (109, 176, 255), (255, 104, 178)]
+    for i, radius in enumerate(range(74, 430, 44)):
+        draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), outline=colors[i % len(colors)], width=7)
+    draw.line((150, 1430, 1170, 660), fill=(109, 176, 255), width=7)
+    draw.rectangle((210, 718, 432, 940), outline=YELLOW, width=7)
+
+    box = (92, 1610, 1228, 2140)
+    draw.rounded_rectangle(box, radius=8, fill=(0, 0, 128), outline=(126, 175, 255), width=3)
+    draw.text((136, 1664), "BASIC source", font=PHONE_MONO_BOLD, fill=YELLOW)
+    code = ["SCREEN 13", "CLS", "FOR R% = 5 TO 150 STEP 5", "  CIRCLE (160,100), R%, C%", "NEXT R%"]
+    y = 1736
+    for line in code:
+        draw.text((136, y), line, font=PHONE_MONO, fill=WHITE)
+        y += 54
+    image.save(SCREENSHOT_DIR / "04_IPHONE_69_graphics.png", optimize=True)
+
+
+def phone_lessons() -> None:
+    image = draw_phone_shell("Learning Guide")
+    draw = ImageDraw.Draw(image)
+    draw_phone_caption(draw, "Learn step by step", "Lessons keep the classic BASIC workflow approachable.")
+    panel = (70, 560, 1250, 2130)
+    draw.rounded_rectangle(panel, radius=8, fill=PANEL, outline=INK, width=4)
+    draw.text((112, 626), "Simple Graphics", font=PHONE_TITLE, fill=INK)
+    draw.text((116, 708), "Draw with SCREEN, CIRCLE, LINE", font=PHONE_BODY, fill=(74, 78, 88))
+    body = "SCREEN 13 sets 320x200 graphics mode. Change the numbers, run again, and see what moves."
+    y = 800
+    for line in wrap_text(draw, body, PHONE_BODY, 1060):
+        draw.text((116, y), line, font=PHONE_BODY, fill=INK)
+        y += 40
+
+    code_box = (116, 1030, 1204, 1390)
+    draw.rounded_rectangle(code_box, radius=6, fill=(232, 235, 240), outline=(166, 171, 184), width=2)
+    code = ["SCREEN 13", "CLS", "CIRCLE (160, 100), 50, 4", "LINE (50, 150)-(270, 150), 2", "PRINT \"Graphics ready!\""]
+    y = 1078
+    for line in code:
+        draw.text((152, y), line, font=PHONE_MONO, fill=INK)
+        y += 54
+
+    draw.rounded_rectangle((116, 1490, 536, 1586), radius=10, fill=(0, 102, 210))
+    center_text(draw, (116, 1490, 536, 1586), "Open in Editor", PHONE_BODY, WHITE)
+    draw.rounded_rectangle((572, 1490, 906, 1586), radius=10, fill=(231, 236, 246), outline=(121, 128, 140), width=2)
+    center_text(draw, (572, 1490, 906, 1586), "Run Lesson", PHONE_BODY, INK)
+    image.save(SCREENSHOT_DIR / "05_IPHONE_69_lessons.png", optimize=True)
+
+
 def copy_assets() -> None:
     icon = Image.open(APP_ICON_SOURCE).convert("RGB")
     icon.save(ASSET_DIR / "app-icon-1024.png", optimize=True)
@@ -313,6 +481,11 @@ def main() -> None:
     screenshot_samples()
     screenshot_graphics()
     screenshot_lessons()
+    phone_welcome()
+    phone_editor()
+    phone_samples()
+    phone_graphics()
+    phone_lessons()
     copy_assets()
     print(f"Wrote screenshots to {SCREENSHOT_DIR}")
     print(f"Wrote marketing assets to {ASSET_DIR}")

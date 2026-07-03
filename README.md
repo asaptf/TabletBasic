@@ -1,7 +1,7 @@
 # TabletBasic
 
-TabletBasic is a retro BASIC learning environment for iPad and Mac, built with
-SwiftUI and a native Swift interpreter.
+TabletBasic is a retro BASIC learning environment for iPhone, iPad, and Mac,
+built with SwiftUI and a native Swift interpreter.
 
 It is inspired by Microsoft QuickBASIC: the blue-screen IDE, the short path from
 typing code to seeing it run, and the feeling that programming can be learned by
@@ -74,7 +74,7 @@ Open the app project:
 open TabletBasic.xcodeproj
 ```
 
-Select the `TabletBasic` scheme, choose an iPad simulator or Mac Catalyst
+Select the `TabletBasic` scheme, choose an iPhone, iPad, or Mac Catalyst
 destination, and run.
 
 If you change `project.yml`, regenerate the project:
@@ -105,7 +105,8 @@ For app and UI tests, use the `TabletBasic` scheme in Xcode.
 
 TabletBasic deliberately keeps the interface simple and tactile. The IDE is
 meant to feel familiar to anyone who learned programming in a classic BASIC
-environment, while still behaving like a native SwiftUI app on iPad and Mac.
+environment, while still behaving like a native SwiftUI app on iPhone, iPad,
+and Mac.
 
 The engine is separated from the UI so the interpreter can be tested, reused,
 and extended independently. The app layer handles editing, menus, lessons,

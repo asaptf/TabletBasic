@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct DOSMenuItem: Identifiable {
     let id = UUID()
@@ -77,12 +78,16 @@ struct DOSMenuBar: View {
         LayoutMetrics.isCompact(horizontalSizeClass)
     }
 
+    private var menuBarRowHeight: CGFloat {
+        compactLayout ? 32 : 28
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if compactLayout {
-                compactMenuBar
+                compactMenuBarRow
             } else {
-                regularMenuBar
+                regularMenuBarRow
             }
 
             Text(viewModel.documentName)
@@ -95,6 +100,9 @@ struct DOSMenuBar: View {
                 .padding(.bottom, compactLayout ? 6 : 4)
         }
         .background(QBTheme.menuBackground)
+        .overlay(alignment: .topLeading) {
+            menuDropdownOverlay
+        }
         .onChange(of: openMenuTitle) { _, newValue in
             isMenuOpen = newValue != nil || compactMenuOpen
         }
@@ -110,7 +118,23 @@ struct DOSMenuBar: View {
         }
     }
 
-    private var regularMenuBar: some View {
+    @ViewBuilder
+    private var menuDropdownOverlay: some View {
+        if compactLayout && compactMenuOpen {
+            compactOverflowMenu
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 4)
+                .offset(y: menuBarRowHeight)
+        } else if !compactLayout,
+                  let openTitle = openMenuTitle,
+                  let menu = menus.first(where: { $0.title == openTitle }),
+                  let menuIndex = menus.firstIndex(where: { $0.title == openTitle }) {
+            dosDropdown(menu: menu)
+                .offset(x: anchors[menuIndex] ?? menuXOffset(for: menuIndex), y: menuBarRowHeight)
+        }
+    }
+
+    private var regularMenuBarRow: some View {
         HStack(spacing: 0) {
             ForEach(Array(menus.enumerated()), id: \.element.id) { index, menu in
                 menuBarButton(menu)
@@ -127,22 +151,15 @@ struct DOSMenuBar: View {
         }
         .padding(.horizontal, 2)
         .padding(.vertical, 2)
-        .frame(height: 28)
+        .frame(height: menuBarRowHeight)
         .coordinateSpace(name: "menubar")
         .onPreferenceChange(MenuAnchorKey.self) { anchors = $0 }
-        .overlay(alignment: .topLeading) {
-            if let openTitle = openMenuTitle,
-               let menu = menus.first(where: { $0.title == openTitle }),
-               let menuIndex = menus.firstIndex(where: { $0.title == openTitle }) {
-                dosDropdown(menu: menu)
-                    .offset(x: anchors[menuIndex] ?? menuXOffset(for: menuIndex), y: 28)
-            }
-        }
     }
 
-    private var compactMenuBar: some View {
+    private var compactMenuBarRow: some View {
         HStack(spacing: 8) {
             Button {
+                dismissKeyboard()
                 compactMenuOpen.toggle()
                 if compactMenuOpen {
                     openMenuTitle = nil
@@ -179,48 +196,96 @@ struct DOSMenuBar: View {
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
-        .frame(height: 32)
-        .overlay(alignment: .topLeading) {
-            if compactMenuOpen {
-                compactOverflowMenu
-                    .padding(.leading, 4)
-                    .offset(y: 32)
+        .frame(height: menuBarRowHeight)
+    }
+
+    private var compactOverflowMenuContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(menus) { menu in
+                Text(menu.title)
+                    .font(QBTheme.monoMenu.weight(.bold))
+                    .foregroundStyle(QBTheme.dosMenuText)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 4)
+                    .padding(.bottom, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(QBTheme.dosMenuBackground)
+
+                ForEach(menu.items) { item in
+                    menuItemRow(item, menu: menu, compact: true)
+                }
             }
         }
     }
 
+    @ViewBuilder
     private var compactOverflowMenu: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(menus) { menu in
-                    Text(menu.title)
-                        .font(QBTheme.monoMenu.weight(.bold))
-                        .foregroundStyle(QBTheme.dosMenuText)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .padding(.bottom, 4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(QBTheme.dosMenuBackground)
-
-                    ForEach(menu.items) { item in
-                        menuItemRow(item, menu: menu)
-                    }
-                }
-            }
-        }
-        .frame(maxHeight: 360)
-        .frame(width: compactOverflowWidth)
-        .background(QBTheme.dosMenuBackground)
-        .overlay(
-            Rectangle()
-                .strokeBorder(QBTheme.dosMenuBorder, lineWidth: 2)
+        let idealHeight = compactOverflowIdealHeight
+        let availableHeight = compactOverflowAvailableHeight
+        let menuBody = compactOverflowMenuBody(
+            idealHeight: idealHeight,
+            availableHeight: availableHeight
         )
-        .shadow(color: .black.opacity(0.25), radius: 0, x: 1, y: 1)
+
+        menuBody
+            .frame(width: compactOverflowWidth)
+            .background(QBTheme.dosMenuBackground)
+            .overlay(
+                Rectangle()
+                    .strokeBorder(QBTheme.dosMenuBorder, lineWidth: 2)
+            )
+            .shadow(color: .black.opacity(0.25), radius: 0, x: 1, y: 1)
+    }
+
+    @ViewBuilder
+    private func compactOverflowMenuBody(idealHeight: CGFloat, availableHeight: CGFloat) -> some View {
+        if idealHeight <= availableHeight {
+            compactOverflowMenuContent
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            ScrollView {
+                compactOverflowMenuContent
+            }
+            .frame(height: availableHeight)
+        }
     }
 
     private var compactOverflowWidth: CGFloat {
         let maxLen = menus.flatMap(\.items).map(\.title.count).max() ?? 20
-        return CGFloat(min(320, max(220, maxLen * 9 + 40)))
+        let preferred = CGFloat(max(220, maxLen * 9 + 40))
+        let screenWidth = UIScreen.main.bounds.width
+        return min(screenWidth - 16, min(320, preferred))
+    }
+
+    private var documentNameRowHeight: CGFloat {
+        compactLayout ? 28 : 24
+    }
+
+    private var compactOverflowIdealHeight: CGFloat {
+        let allItems = menus.flatMap(\.items)
+        return LayoutMetrics.compactOverflowContentHeight(
+            sectionCount: menus.count,
+            itemCount: allItems.filter { !$0.isSeparator }.count,
+            separatorCount: allItems.filter(\.isSeparator).count
+        )
+    }
+
+    private var compactOverflowAvailableHeight: CGFloat {
+        LayoutMetrics.compactOverflowAvailableHeight(
+            screenHeight: UIScreen.main.bounds.height,
+            menuHeaderHeight: menuBarRowHeight + documentNameRowHeight,
+            safeAreaTop: keyWindowSafeAreaTop
+        )
+    }
+
+    private var keyWindowSafeAreaTop: CGFloat {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows where window.isKeyWindow {
+                return window.safeAreaInsets.top
+            }
+        }
+        return 0
     }
 
     private func menuBarButton(_ menu: DOSMenuDefinition) -> some View {
@@ -274,14 +339,17 @@ struct DOSMenuBar: View {
         _ item: DOSMenuItem,
         menu: DOSMenuDefinition,
         width: CGFloat? = nil,
-        highlighted: Bool = false
+        highlighted: Bool = false,
+        compact: Bool = false
     ) -> some View {
+        let verticalPadding: CGFloat = compact ? 2 : 3
+
         if item.isSeparator {
             Rectangle()
                 .fill(QBTheme.dosMenuBorder)
                 .frame(width: (width ?? compactOverflowWidth) - 8, height: 1)
                 .padding(.horizontal, 4)
-                .padding(.vertical, 3)
+                .padding(.vertical, verticalPadding)
         } else {
             Button {
                 if item.enabled, let action = item.action {
@@ -300,7 +368,7 @@ struct DOSMenuBar: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 3)
+                .padding(.vertical, verticalPadding)
                 .frame(width: width, alignment: .leading)
                 .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
                 .background(highlighted && item.enabled ? QBTheme.dosMenuHighlightBackground : QBTheme.dosMenuBackground)
@@ -329,6 +397,15 @@ struct DOSMenuBar: View {
         compactMenuOpen = false
         highlightedIndex = 0
         isMenuOpen = false
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
     }
 }
 

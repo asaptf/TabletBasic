@@ -1,7 +1,7 @@
 # Fastlane Publishing Assets
 
-This folder contains App Store metadata, screenshot assets, and fastlane lanes
-for TabletBasic.
+This folder contains App Store metadata, iPhone/iPad screenshot assets, and
+fastlane lanes for TabletBasic.
 
 ## Before Uploading
 
