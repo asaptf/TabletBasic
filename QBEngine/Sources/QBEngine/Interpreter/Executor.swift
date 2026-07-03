@@ -4,7 +4,7 @@ public final class Executor: @unchecked Sendable {
     private let environment = Environment()
     public let screen = ScreenBuffer()
     public weak var output: QBOutputHandler?
-    public weak var input: QBInputHandler?
+    public var input: QBInputHandler?
 
     private var returnStack: [Int] = []
     private var forStack: [ForFrame] = []
@@ -259,6 +259,16 @@ public final class Executor: @unchecked Sendable {
             let r = try evaluate(radius).asInt
             let c = try color.map { try evaluate($0).asInt } ?? screen.foreground
             screen.drawCircle(cx: cx, cy: cy, radius: r, colorIndex: c)
+        case .selectCase(let expr, let clauses):
+            let value = try evaluate(expr)
+            for clause in clauses {
+                if try clauseMatches(clause, value: value) {
+                    if let jump = try await executeBlock(clause.statements, program: program, at: pc) {
+                        return jump
+                    }
+                    break
+                }
+            }
         case .beep:
             output?.beep()
         case .sleep(let duration):
@@ -320,7 +330,27 @@ public final class Executor: @unchecked Sendable {
         guard let variables else { return }
         for variable in variables {
             let response = try await input?.prompt(prompts.last ?? "? ") ?? ""
-            try assign(variable, value: .string(response))
+            try assign(variable, value: inputValue(response, for: variable))
+        }
+    }
+
+    private func inputValue(_ response: String, for variable: Expr) -> QBValue {
+        guard case .variable(_, let type) = variable else {
+            return .string(response)
+        }
+        switch type {
+        case .string:
+            return .string(response)
+        case .integer:
+            return .integer(Int(response.trimmingCharacters(in: .whitespaces)) ?? 0)
+        case .long:
+            return .long(Int(response.trimmingCharacters(in: .whitespaces)) ?? 0)
+        case .single, .double, .variant:
+            let trimmed = response.trimmingCharacters(in: .whitespaces)
+            if let value = Double(trimmed) {
+                return QBValue.from(value, type: type)
+            }
+            return QBValue.from(0, type: type)
         }
     }
 
@@ -426,7 +456,7 @@ public final class Executor: @unchecked Sendable {
             }
             return .single(environment.nextRandom())
         case "CHR", "CHR$": return .string(String(Character(UnicodeScalar(evaluated[0].asInt % 256)!)))
-        case "STR", "STR$": return .string(evaluated[0].asString)
+        case "STR", "STR$": return .string(formatStr(evaluated[0]))
         case "VAL": return QBValue.from(Double(evaluated[0].asString) ?? 0, type: .variant)
         case "LEN": return .integer(evaluated[0].asString.count)
         case "LEFT", "LEFT$":
@@ -437,8 +467,86 @@ public final class Executor: @unchecked Sendable {
             let s = evaluated[0].asString
             let n = max(0, evaluated[1].asInt)
             return .string(String(s.suffix(n)))
+        case "MID", "MID$":
+            let s = evaluated[0].asString
+            let start = max(1, evaluated[1].asInt)
+            let length = evaluated.count > 2 ? max(0, evaluated[2].asInt) : s.count - start + 1
+            let offset = start - 1
+            guard offset < s.count else { return .string("") }
+            let end = min(s.count, offset + length)
+            return .string(String(s[s.index(s.startIndex, offsetBy: offset)..<s.index(s.startIndex, offsetBy: end)]))
+        case "UCASE", "UCASE$": return .string(evaluated[0].asString.uppercased())
+        case "LCASE", "LCASE$": return .string(evaluated[0].asString.lowercased())
+        case "INSTR":
+            if evaluated.count == 2 {
+                let start = evaluated[0].asString
+                let needle = evaluated[1].asString
+                if let range = start.range(of: needle) {
+                    return .integer(start.distance(from: start.startIndex, to: range.lowerBound) + 1)
+                }
+                return .integer(0)
+            }
+            let startAt = max(1, evaluated[1].asInt)
+            let haystack = evaluated[0].asString
+            let needle = evaluated[2].asString
+            let offset = startAt - 1
+            guard offset < haystack.count else { return .integer(0) }
+            let slice = String(haystack[haystack.index(haystack.startIndex, offsetBy: offset)...])
+            if let range = slice.range(of: needle) {
+                return .integer(offset + slice.distance(from: slice.startIndex, to: range.lowerBound) + 1)
+            }
+            return .integer(0)
+        case "STRING", "STRING$":
+            let count = max(0, evaluated[0].asInt)
+            let ch = evaluated.count > 1 ? evaluated[1].asString.first.map(String.init) ?? " " : " "
+            return .string(String(repeating: ch, count: count))
         default:
             throw QBError.runtime("Unknown function \(upper)")
+        }
+    }
+
+    private func clauseMatches(_ clause: CaseClause, value: QBValue) throws -> Bool {
+        if clause.isElse {
+            return true
+        }
+        if let op = clause.isCompare, let rhs = clause.compareValue {
+            let left = value.asDouble
+            let right = try evaluate(rhs).asDouble
+            switch op {
+            case .eq: return left == right
+            case .ne: return left != right
+            case .lt: return left < right
+            case .le: return left <= right
+            case .gt: return left > right
+            case .ge: return left >= right
+            default: return false
+            }
+        }
+        guard let values = clause.values else { return false }
+        let actual = value.asDouble
+        for caseValue in values {
+            let expected = try evaluate(caseValue).asDouble
+            if actual == expected {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func formatStr(_ value: QBValue) -> String {
+        switch value {
+        case .string(let s):
+            return s
+        case .integer(let v):
+            return v >= 0 ? " \(v)" : String(v)
+        case .long(let v):
+            return v >= 0 ? " \(v)" : String(v)
+        case .single(let v):
+            return v >= 0 ? " \(formatPrintValue(.single(v)))" : formatPrintValue(.single(v))
+        case .double(let v):
+            return v >= 0 ? " \(String(v))" : String(v)
+        case .bool(let v):
+            return v ? " -1" : " 0"
         }
     }
 

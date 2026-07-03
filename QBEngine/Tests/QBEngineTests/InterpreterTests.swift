@@ -81,6 +81,17 @@ final class InterpreterTests: XCTestCase {
         XCTAssertTrue(output.buffer.contains("YES"))
     }
 
+    func testUndefinedVariablePrintsZero() async {
+        let interpreter = QBInterpreter()
+        let output = ConsoleOutputHandler()
+        interpreter.output = output
+
+        await interpreter.run("PRINT TEST")
+
+        XCTAssertNil(interpreter.lastError)
+        XCTAssertTrue(output.buffer.contains("0"))
+    }
+
     func testGosubReturn() async {
         let interpreter = QBInterpreter()
         let output = ConsoleOutputHandler()

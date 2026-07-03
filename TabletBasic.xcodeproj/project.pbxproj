@@ -64,11 +64,11 @@
 		2A843057DAA47530278CB1AE /* BasicProgramDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicProgramDocument.swift; sourceTree = "<group>"; };
 		32B405CF4C720C8516C89974 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		33C716B73BDDE93A8753E0B9 /* ImmediateWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmediateWindowView.swift; sourceTree = "<group>"; };
-		33EABB06FDD42B6B0B804B5E /* QBEngine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = QBEngine; path = QBEngine; sourceTree = SOURCE_ROOT; };
+		33EABB06FDD42B6B0B804B5E /* QBEngine */ = {isa = PBXFileReference; lastKnownFileType = folder; path = QBEngine; sourceTree = SOURCE_ROOT; };
 		3FA179292031C4A873946264 /* BasicSyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicSyntaxHighlighter.swift; sourceTree = "<group>"; };
 		5085F0A68DFB3B21FF65DF9C /* AppBranding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBranding.swift; sourceTree = "<group>"; };
 		5911551A37E5D85F4320FCE5 /* IDEViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IDEViewModel.swift; sourceTree = "<group>"; };
-		597774FB41C6BA6F01B38829 /* TabletBasicUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TabletBasicUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		597774FB41C6BA6F01B38829 /* TabletBasicUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper; path = TabletBasicUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		732FAF7E6BE1AF4445AE73D4 /* SampleProgramsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleProgramsUITests.swift; sourceTree = "<group>"; };
 		74B6782F0230023A8A45B91B /* LayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutMetrics.swift; sourceTree = "<group>"; };
 		7F490449B21B10E636CCF579 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
@@ -85,7 +85,7 @@
 		C890B2B1F706897EC3C0A91F /* TabletBasicTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TabletBasicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D15D2EE517633F7297558EE1 /* TabletBasicUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletBasicUITests.swift; sourceTree = "<group>"; };
 		D9EA99F7DF324C4A5C30FEF1 /* LessonCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LessonCatalog.swift; sourceTree = "<group>"; };
-		DB3A267474297CEEA9D1B4CB /* TabletBasic.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TabletBasic.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DB3A267474297CEEA9D1B4CB /* TabletBasic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TabletBasic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC47CE3BBDDCA8FE6756CB94 /* QBTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QBTheme.swift; sourceTree = "<group>"; };
 		E7F6DF032F117F6145E8410A /* UITestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHelpers.swift; sourceTree = "<group>"; };
 		EDC105CDFD79670002FDA15E /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
@@ -304,9 +304,6 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					30BBC39F1DCFB495D74738A4 = {
-						ProvisioningStyle = Manual;
-					};
 					55AC5F7C08D2B2512F4FDE2E = {
 						TestTargetID = 30BBC39F1DCFB495D74738A4;
 					};
@@ -416,8 +413,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WV9GF23FQM;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = QuickBasic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TabletBasic;
@@ -430,6 +428,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.tabletbasic.app;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;
@@ -619,8 +618,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WV9GF23FQM;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = QuickBasic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TabletBasic;
@@ -633,6 +633,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.tabletbasic.app;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;

@@ -10,9 +10,41 @@ public struct ProgramParser {
             .map(String.init)
 
         var programLines: [ProgramLine] = []
-        for (index, physicalLine) in physicalLines.enumerated() {
-            let trimmed = physicalLine.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { continue }
+        var index = 0
+        while index < physicalLines.count {
+            let trimmed = physicalLines[index].trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty {
+                index += 1
+                continue
+            }
+
+            if ControlBlockFolder.isSelectCaseStart(trimmed) {
+                let (statement, consumed, sourceLine) = try parseSelectCaseBlock(
+                    physicalLines,
+                    start: index
+                )
+                programLines.append(
+                    ProgramLine(lineNumber: nil, statements: [statement], sourceLine: sourceLine)
+                )
+                index += consumed
+                continue
+            }
+
+            if ControlBlockFolder.isBlockIfStart(trimmed) {
+                let (statement, consumed) = try parseIfBlock(physicalLines, start: index)
+                programLines.append(
+                    ProgramLine(lineNumber: nil, statements: [statement], sourceLine: index + 1)
+                )
+                index += consumed
+                continue
+            }
+
+            let physicalLine = physicalLines[index]
+            let foldedTrimmed = physicalLine.trimmingCharacters(in: .whitespaces)
+            if foldedTrimmed.isEmpty {
+                index += 1
+                continue
+            }
 
             var lexer = Lexer(source: physicalLine)
             let tokens = lexer.tokenize().filter { token in
@@ -21,15 +53,177 @@ public struct ProgramParser {
                 return true
             }
 
-            // Lines that are only apostrophe comments produce no tokens after lexing.
-            if tokens.isEmpty { continue }
+            if tokens.isEmpty {
+                index += 1
+                continue
+            }
 
             var parser = LineParser(tokens: tokens, sourceLine: index + 1)
             let line = try parser.parseLine()
             programLines.append(line)
+            index += 1
         }
 
         return ParsedProgram(lines: programLines)
+    }
+
+    private func parseIfBlock(_ lines: [String], start: Int) throws -> (Statement, Int) {
+        let header = lines[start].trimmingCharacters(in: .whitespaces)
+        let headerTokens = tokenizeLine(header)
+        var headerParser = LineParser(tokens: headerTokens, sourceLine: start + 1)
+        let condition = try headerParser.parseIfHeaderCondition()
+
+        var thenLines: [String] = []
+        var elseLines: [String] = []
+        var index = start + 1
+        var inElse = false
+
+        while index < lines.count {
+            let trimmed = lines[index].trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty {
+                index += 1
+                continue
+            }
+
+            let upper = trimmed.uppercased()
+            if upper.hasPrefix("END IF") || upper == "ENDIF" {
+                index += 1
+                break
+            }
+
+            if upper == "ELSE" || upper.hasPrefix("ELSE ") || upper.hasPrefix("ELSEIF ") {
+                inElse = true
+                if upper.hasPrefix("ELSE ") {
+                    let afterElse = trimmed.dropFirst(5).trimmingCharacters(in: .whitespaces)
+                    if !afterElse.isEmpty {
+                        elseLines.append(String(afterElse))
+                    }
+                } else if upper.hasPrefix("ELSEIF ") {
+                    elseLines.append(trimmed)
+                }
+                index += 1
+                continue
+            }
+
+            if inElse {
+                elseLines.append(trimmed)
+            } else {
+                thenLines.append(trimmed)
+            }
+            index += 1
+        }
+
+        let thenStatements = try parseStatementLines(thenLines, sourceLine: start + 2)
+        let elseStatements = elseLines.isEmpty ? nil : try parseStatementLines(elseLines, sourceLine: start + 2)
+        return (.ifStmt(condition, thenStatements, elseStatements), index - start)
+    }
+
+    private func parseSelectCaseBlock(
+        _ lines: [String],
+        start: Int
+    ) throws -> (Statement, Int, Int) {
+        let header = lines[start].trimmingCharacters(in: .whitespaces)
+        let headerTokens = tokenizeLine(header)
+        var headerParser = LineParser(tokens: headerTokens, sourceLine: start + 1)
+        let selector = try headerParser.parseSelectCaseHeader()
+
+        var clauses: [CaseClause] = []
+        var index = start + 1
+        var currentCaseLines: [String] = []
+        var currentCaseHeader: String?
+
+        func flushCase() throws {
+            guard let headerLine = currentCaseHeader else { return }
+            let statements = try parseStatementLines(currentCaseLines, sourceLine: index)
+            clauses.append(try parseCaseClause(header: headerLine, statements: statements))
+            currentCaseHeader = nil
+            currentCaseLines = []
+        }
+
+        while index < lines.count {
+            let trimmed = lines[index].trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty {
+                index += 1
+                continue
+            }
+
+            if ControlBlockFolder.isEndSelect(trimmed) {
+                try flushCase()
+                index += 1
+                break
+            }
+
+            let upper = trimmed.uppercased()
+            if upper.hasPrefix("CASE ") || upper == "CASE ELSE" {
+                try flushCase()
+                currentCaseHeader = trimmed
+                index += 1
+                continue
+            }
+
+            currentCaseLines.append(trimmed)
+            index += 1
+        }
+
+        return (.selectCase(selector, clauses), index - start, start + 1)
+    }
+
+    private func parseCaseClause(header: String, statements: [Statement]) throws -> CaseClause {
+        let upper = header.uppercased().trimmingCharacters(in: .whitespaces)
+        if upper == "CASE ELSE" {
+            return CaseClause(isElse: true, statements: statements)
+        }
+
+        guard upper.hasPrefix("CASE ") else {
+            throw QBError.syntax("Expected CASE clause, got '\(header)'")
+        }
+
+        let body = header.dropFirst(5).trimmingCharacters(in: .whitespaces)
+        let bodyUpper = body.uppercased()
+        if bodyUpper.hasPrefix("IS ") {
+            let compareBody = body.dropFirst(3).trimmingCharacters(in: .whitespaces)
+            let tokens = tokenizeLine(String(compareBody))
+            var parser = ExpressionParser(tokens: tokens)
+            let (op, rhs, consumed) = try parser.parseCaseIsComparison()
+            if consumed < tokens.count {
+                throw QBError.syntax("Unexpected tokens after CASE IS comparison")
+            }
+            return CaseClause(isCompare: op, compareValue: rhs, statements: statements)
+        }
+
+        let values = try parseCommaSeparatedExpressions(body)
+        return CaseClause(values: values, statements: statements)
+    }
+
+    private func parseCommaSeparatedExpressions(_ source: String) throws -> [Expr] {
+        let tokens = tokenizeLine(source)
+        var parser = ExpressionParser(tokens: tokens)
+        var values: [Expr] = []
+        repeat {
+            values.append(try parser.parseExpression())
+        } while parser.takeCommaIfPresent()
+        return values
+    }
+
+    private func parseStatementLines(_ lines: [String], sourceLine: Int) throws -> [Statement] {
+        var statements: [Statement] = []
+        for (offset, line) in lines.enumerated() {
+            let tokens = tokenizeLine(line)
+            var parser = LineParser(tokens: tokens, sourceLine: sourceLine + offset)
+            repeat {
+                statements.append(try parser.parseStatement())
+            } while parser.takeColonIfPresent()
+        }
+        return statements
+    }
+
+    private func tokenizeLine(_ source: String) -> [Token] {
+        var lexer = Lexer(source: source)
+        return lexer.tokenize().filter { token in
+            if case .newline = token.kind { return false }
+            if case .eof = token.kind { return false }
+            return true
+        }
     }
 }
 
@@ -63,7 +257,7 @@ private struct LineParser {
         return ProgramLine(lineNumber: lineNumber, statements: statements, sourceLine: sourceLine)
     }
 
-    private mutating func parseStatement() throws -> Statement {
+    mutating func parseStatement() throws -> Statement {
         guard let token = peek() else {
             throw QBError.syntax("Empty statement at line \(sourceLine)")
         }
@@ -284,6 +478,7 @@ private struct LineParser {
             thenStatements.append(try parseStatement())
             while !isAtEnd() && !isElseClause() {
                 guard match(.colon) else { break }
+                if isElseClause() { break }
                 thenStatements.append(try parseStatement())
             }
         }
@@ -298,8 +493,9 @@ private struct LineParser {
                 elseBody = [.goto(lineNum)]
             } else {
                 elseBody.append(try parseStatement())
-                while !isAtEnd() {
+                while !isAtEnd() && !isStatementBoundary() {
                     guard match(.colon) else { break }
+                    if isStatementBoundary() { break }
                     elseBody.append(try parseStatement())
                 }
             }
@@ -415,13 +611,30 @@ private struct LineParser {
         return .input(prompts, vars)
     }
 
+    mutating func parseIfHeaderCondition() throws -> Expr {
+        try consumeKeyword(.if)
+        let condition = try parseExpression()
+        try consumeKeyword(.then)
+        return condition
+    }
+
+    mutating func parseSelectCaseHeader() throws -> Expr {
+        try consumeKeyword(.select)
+        try consumeKeyword(.case)
+        return try parseExpression()
+    }
+
+    mutating func takeColonIfPresent() -> Bool {
+        match(.colon)
+    }
+
     private mutating func parsePrintList() throws -> [PrintItem] {
-        if isAtEnd() || check(.colon) {
+        if isAtEnd() || check(.colon) || isStatementBoundary() {
             return [.expression(.string(""))]
         }
 
         var items: [PrintItem] = []
-        while !isAtEnd() && !check(.colon) {
+        while !isAtEnd() && !check(.colon) && !isStatementBoundary() {
             if match(.semicolon) {
                 items.append(.separator(.semicolon))
                 if isAtEnd() || check(.colon) { break }
@@ -696,7 +909,7 @@ private struct LineParser {
 
     private func isStatementBoundary() -> Bool {
         guard let token = peek(), case .keyword(let kw) = token.kind else { return false }
-        return [.next, .wend, .loop, .else, .elseif, .end, .return].contains(kw)
+        return [.next, .wend, .loop, .else, .elseif, .end, .return, .case].contains(kw)
     }
 }
 

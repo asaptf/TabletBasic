@@ -163,7 +163,7 @@ public struct ExpressionParser {
                 advance()
                 let (name, qbType) = splitTypeSuffix(rawName)
                 if match(.lparen) {
-                    if qbType != .variant {
+                    if qbType != .variant && !Self.builtinFunctions.contains(name.uppercased()) {
                         return try parseArrayAccess(name: name, type: qbType)
                     }
                     return .function(name, try parseArgumentList())
@@ -215,6 +215,49 @@ public struct ExpressionParser {
     private static let zeroArgFunctions: Set<Keyword> = [
         .rnd, .inkey
     ]
+
+    private static let builtinFunctions: Set<String> = [
+        "ABS", "ASC", "ATN", "CHR", "CHR$", "CINT", "CDBL", "CSNG", "CLNG",
+        "COS", "EXP", "FIX", "HEX$", "INKEY$", "INSTR", "INT", "LCASE", "LCASE$",
+        "LEFT", "LEFT$", "LEN", "LOG", "MID", "MID$", "OCT$", "RIGHT", "RIGHT$",
+        "RND", "SGN", "SIN", "SQR", "STR", "STR$", "STRING", "STRING$",
+        "TAN", "UCASE", "UCASE$", "VAL"
+    ]
+
+    mutating func takeCommaIfPresent() -> Bool {
+        match(.comma)
+    }
+
+    mutating func parseCaseIsComparison() throws -> (BinaryOp, Expr, Int) {
+        let startPos = pos
+        if match(.less) {
+            if match(.equals) {
+                return (.le, try parseExpression(), pos)
+            }
+            if match(.greater) {
+                return (.ne, try parseExpression(), pos)
+            }
+            return (.lt, try parseExpression(), pos)
+        }
+        if match(.greater) {
+            if match(.equals) {
+                return (.ge, try parseExpression(), pos)
+            }
+            return (.gt, try parseExpression(), pos)
+        }
+        if match(.equals) {
+            return (.eq, try parseExpression(), pos)
+        }
+        if matchKeyword(.not) {
+            if match(.less) {
+                if match(.greater) {
+                    return (.ne, try parseExpression(), pos)
+                }
+            }
+        }
+        pos = startPos
+        throw QBError.syntax("Expected comparison operator after CASE IS")
+    }
 
     private func splitTypeSuffix(_ rawName: String) -> (String, QBType) {
         guard let last = rawName.last, let suffix = TypeSuffix(rawValue: String(last)) else {

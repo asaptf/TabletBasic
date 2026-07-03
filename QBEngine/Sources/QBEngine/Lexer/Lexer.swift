@@ -1,6 +1,9 @@
 import Foundation
 
 public struct Lexer: Sendable {
+    private static let dollarSuffixFunctions: Set<String> = [
+        "ucase", "lcase", "left", "right", "mid", "chr", "str", "string"
+    ]
     private let source: String
     private let chars: [Character]
     private var index: Int = 0
@@ -189,6 +192,12 @@ public struct Lexer: Sendable {
 
         let lower = text.lowercased()
         if let keyword = Keyword.lookup[lower] {
+            if Self.dollarSuffixFunctions.contains(lower),
+               index < chars.count, chars[index] == "$" {
+                text.append("$")
+                advance()
+                return Token(kind: .identifier(text), line: startLine, column: startColumn)
+            }
             return Token(kind: .keyword(keyword), line: startLine, column: startColumn)
         }
 

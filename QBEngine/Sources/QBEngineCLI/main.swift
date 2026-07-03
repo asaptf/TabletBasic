@@ -1,6 +1,10 @@
 import Foundation
 import QBEngine
 
+if CommandLine.arguments.contains("--school") {
+    await runSchoolProbe()
+}
+
 let parser = ProgramParser()
 var failures = 0
 

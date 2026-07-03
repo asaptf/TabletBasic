@@ -115,7 +115,9 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
     public static let right = Keyword(rawValue: "right")
     public static let rset = Keyword(rawValue: "rset")
     public static let rnd = Keyword(rawValue: "rnd")
+    public static let select = Keyword(rawValue: "select")
     public static let screen = Keyword(rawValue: "screen")
+    public static let lcase = Keyword(rawValue: "lcase")
     public static let seek = Keyword(rawValue: "seek")
     public static let sgn = Keyword(rawValue: "sgn")
     public static let shared = Keyword(rawValue: "shared")
@@ -159,9 +161,9 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
         .instr, .int, .integer, .left, .len, .let, .line, .loc, .log, .long, .loop, .lset,
         .mid, .mod, .next, .not, .on, .open, .option, .or, .paint, .pcopy, .peek, .poke,
         .preset, .print, .pset, .put, .randomize, .read, .redim, .rem, .restore, .return,
-        .right, .rset, .rnd, .screen, .seek, .sgn, .shared, .sin, .single, .sleep, .sng,
+        .right, .rset, .rnd, .select, .screen, .seek, .sgn, .shared, .sin, .single, .sleep, .sng,
         .sound, .space, .spc, .sqr, .static, .step, .stop, .str, .string, .sub, .swap,
-        .tab, .tan, .then, .time, .to, .ubound, .ucase, .until, .val, .varptr, .view,
+        .tab, .tan, .then, .time, .to, .ubound, .ucase, .lcase, .until, .val, .varptr, .view,
         .wend, .while, .width, .write, .xor
     ]
 

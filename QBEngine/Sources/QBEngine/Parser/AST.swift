@@ -35,6 +35,28 @@ public enum Separator: Sendable {
     case semicolon, comma
 }
 
+public struct CaseClause: Sendable {
+    public let values: [Expr]?
+    public let isCompare: BinaryOp?
+    public let compareValue: Expr?
+    public let isElse: Bool
+    public let statements: [Statement]
+
+    public init(
+        values: [Expr]? = nil,
+        isCompare: BinaryOp? = nil,
+        compareValue: Expr? = nil,
+        isElse: Bool = false,
+        statements: [Statement]
+    ) {
+        self.values = values
+        self.isCompare = isCompare
+        self.compareValue = compareValue
+        self.isElse = isElse
+        self.statements = statements
+    }
+}
+
 public indirect enum Statement: Sendable {
     case rem(String)
     case print([PrintItem])
@@ -71,6 +93,7 @@ public indirect enum Statement: Sendable {
     case beep
     case sleep(Expr)
     case assign(Expr, Expr)
+    case selectCase(Expr, [CaseClause])
 }
 
 public indirect enum DoMode: Sendable {
