@@ -42,7 +42,10 @@ struct RetroIDEView: View {
                 viewModel.handleShortcut(.runImmediate)
             }
 
-            StatusBarView(modeLabel: viewModel.showRunOutput ? "Output" : "Immediate")
+            StatusBarView(
+                modeLabel: viewModel.showRunOutput ? "Output" : "Immediate",
+                statusMessage: viewModel.statusMessage
+            )
         }
         .background(QBTheme.background)
         .onAppear { editorFocused = true }
@@ -142,5 +145,69 @@ private struct RunOutputView: View {
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .background(QBTheme.background)
+        .overlay {
+            if viewModel.showInputPrompt {
+                InputPromptOverlay(viewModel: viewModel)
+            }
+        }
+    }
+}
+
+private struct InputPromptOverlay: View {
+    @ObservedObject var viewModel: IDEViewModel
+    @FocusState private var fieldFocused: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var compactLayout: Bool {
+        LayoutMetrics.isCompact(horizontalSizeClass)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                Text(viewModel.inputPromptText)
+                    .font(QBTheme.dialogFont)
+                    .accessibilityIdentifier("inputPrompt")
+
+                TextField("", text: $viewModel.inputPromptValue)
+                    .font(QBTheme.dialogFont)
+                    .foregroundStyle(QBTheme.dialogText)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(Color.white)
+                    .overlay(
+                        Rectangle()
+                            .stroke(QBTheme.dialogBorder, lineWidth: 1)
+                    )
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused($fieldFocused)
+                    .accessibilityIdentifier("inputPromptField")
+                    .onSubmit { viewModel.submitInputPrompt() }
+
+                Button("OK") {
+                    viewModel.submitInputPrompt()
+                }
+                .font(QBTheme.dialogFont)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("inputPromptOK")
+            }
+            .multilineTextAlignment(.center)
+            .foregroundStyle(QBTheme.dialogText)
+            .padding(.horizontal, compactLayout ? 16 : 24)
+            .padding(.vertical, compactLayout ? 14 : 18)
+            .background(QBTheme.dialogBackground)
+            .overlay(
+                Rectangle()
+                    .stroke(QBTheme.dialogBorder, lineWidth: 2)
+            )
+            .frame(maxWidth: LayoutMetrics.welcomeMaxWidth(compact: compactLayout))
+            .padding(.horizontal, compactLayout ? 12 : 24)
+        }
+        .onAppear { fieldFocused = true }
     }
 }

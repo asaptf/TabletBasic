@@ -121,32 +121,37 @@ public final class Executor: @unchecked Sendable {
                     return try skipToNext(program: program, from: pc, keyword: .loop)
                 }
             }
-        case .loop:
+        case .loop(let bottomMode):
             guard let frame = doStack.popLast() else {
                 throw QBError.runtime("LOOP without DO")
             }
             let startLine = program.lines[frame.linePC]
-            if case .doLoop(let mode, _, _) = startLine.statements.first {
-                switch mode {
-                case .top:
-                    doStack.append(frame)
-                    return startLine.lineNumber ?? frame.linePC
-                case .bottom:
-                    doStack.append(frame)
-                    return startLine.lineNumber ?? frame.linePC
+            let startTarget = startLine.lineNumber ?? frame.linePC
+            let continueLoop: Bool
+            if let bottomMode {
+                switch bottomMode {
                 case .until(let expr):
-                    let untilDone = try evaluate(expr).asBool
-                    if !untilDone {
-                        doStack.append(frame)
-                        return startLine.lineNumber ?? frame.linePC
-                    }
+                    continueLoop = !(try evaluate(expr).asBool)
                 case .while(let expr):
-                    let whileActive = try evaluate(expr).asBool
-                    if whileActive {
-                        doStack.append(frame)
-                        return startLine.lineNumber ?? frame.linePC
-                    }
+                    continueLoop = try evaluate(expr).asBool
+                case .top, .bottom:
+                    continueLoop = true
                 }
+            } else if case .doLoop(let doMode, _, _) = startLine.statements.first {
+                switch doMode {
+                case .until(let expr):
+                    continueLoop = !(try evaluate(expr).asBool)
+                case .while(let expr):
+                    continueLoop = try evaluate(expr).asBool
+                case .top, .bottom:
+                    continueLoop = true
+                }
+            } else {
+                continueLoop = true
+            }
+            if continueLoop {
+                doStack.append(frame)
+                return startTarget
             }
         case .exitFor:
             throw QBError.breakLoop
@@ -174,19 +179,10 @@ public final class Executor: @unchecked Sendable {
             throw QBError.stopProgram
         case .dim(let name, let type, let bounds):
             var parsedBounds: [Int] = []
-            for i in stride(from: 0, to: bounds.count, by: 1) {
-                if i % 2 == 0 && i + 1 < bounds.count {
-                    let lower = try evaluate(bounds[i]).asInt
-                    let upper = try evaluate(bounds[i + 1]).asInt
-                    parsedBounds.append(lower)
-                    parsedBounds.append(upper)
-                } else if bounds.count == 1 {
-                    let upper = try evaluate(bounds[0]).asInt
-                    parsedBounds = [1, upper]
-                }
-            }
-            if parsedBounds.count == 1 {
-                parsedBounds = [1, parsedBounds[0]]
+            for bound in bounds {
+                let upper = try evaluate(bound).asInt
+                parsedBounds.append(1)
+                parsedBounds.append(upper)
             }
             try environment.dimension(name, type: type, bounds: parsedBounds)
         case .defType(let type, let start, let end):
@@ -304,10 +300,21 @@ public final class Executor: @unchecked Sendable {
                 line += String(repeating: " ", count: max(1, zone))
                 currentCol += zone
                 needNewColumn = true
-            case .tab:
-                let zone = 14 - ((currentCol - 1) % 14)
-                line += String(repeating: " ", count: max(1, zone))
-                currentCol += zone
+            case .tab(let columnExpr):
+                if let columnExpr {
+                    let targetCol = max(1, min(try evaluate(columnExpr).asInt, screen.textCols))
+                    if currentCol > targetCol {
+                        line += "\n"
+                        currentCol = 1
+                    }
+                    let spaces = max(0, targetCol - currentCol)
+                    line += String(repeating: " ", count: spaces)
+                    currentCol = targetCol
+                } else {
+                    let zone = 14 - ((currentCol - 1) % 14)
+                    line += String(repeating: " ", count: max(1, zone))
+                    currentCol += zone
+                }
             case .spc(let count):
                 line += String(repeating: " ", count: max(0, count))
                 currentCol += count
@@ -358,15 +365,24 @@ public final class Executor: @unchecked Sendable {
         switch target {
         case .variable(let name, let type):
             environment.setVariable(name, value: value, type: type)
-        case .function("INDEX", let args):
-            guard args.count == 2,
-                  case .variable(let name, let type) = args[0] else {
-                throw QBError.runtime("Invalid assignment target")
-            }
-            let index = try evaluate(args[1]).asInt
-            try environment.setArray(name, indices: [index], value: value, type: type)
+        case .function("INDEX", _):
+            let access = try resolveArrayAccess(target)
+            let indices = try access.indices.map { try evaluate($0).asInt }
+            try environment.setArray(access.name, indices: indices, value: value, type: access.type)
         default:
             throw QBError.runtime("Invalid assignment target")
+        }
+    }
+
+    private func resolveArrayAccess(_ expr: Expr) throws -> (name: String, type: QBType, indices: [Expr]) {
+        switch expr {
+        case .function("INDEX", let args) where args.count == 2:
+            let inner = try resolveArrayAccess(args[0])
+            return (inner.name, inner.type, inner.indices + [args[1]])
+        case .variable(let name, let type):
+            return (name, type, [])
+        default:
+            throw QBError.runtime("Invalid array access")
         }
     }
 
@@ -433,10 +449,10 @@ public final class Executor: @unchecked Sendable {
 
     private func evaluateFunction(_ name: String, args: [Expr]) throws -> QBValue {
         let upper = name.uppercased()
-        if upper == "INDEX", args.count == 2,
-           case .variable(let arrayName, let type) = args[0] {
-            let index = try evaluate(args[1]).asInt
-            return try environment.getArray(arrayName, indices: [index])
+        if upper == "INDEX", args.count == 2 {
+            let access = try resolveArrayAccess(.function("INDEX", args))
+            let indices = try access.indices.map { try evaluate($0).asInt }
+            return try environment.getArray(access.name, indices: indices)
         }
 
         let evaluated = try args.map { try evaluate($0) }
@@ -454,7 +470,24 @@ public final class Executor: @unchecked Sendable {
             if evaluated.isEmpty {
                 return .single(environment.nextRandom())
             }
+            let n = evaluated[0].asDouble
+            if n == 0 {
+                return .single(environment.lastRandom)
+            }
+            if n < 0 {
+                environment.seedRandom(Int(n))
+                return .single(environment.nextRandom())
+            }
+            let bound = Int(n)
+            if bound > 0 {
+                return .integer(Int(environment.nextRandom() * Double(bound)) + 1)
+            }
             return .single(environment.nextRandom())
+        case "EXP": return QBValue.from(exp(evaluated[0].asDouble), type: .variant)
+        case "LOG": return QBValue.from(log(evaluated[0].asDouble), type: .variant)
+        case "ATN": return QBValue.from(atan(evaluated[0].asDouble), type: .variant)
+        case "FIX": return QBValue.from(Double(Int(evaluated[0].asDouble)), type: .variant)
+        case "INKEY", "INKEY$": return .string("")
         case "CHR", "CHR$": return .string(String(Character(UnicodeScalar(evaluated[0].asInt % 256)!)))
         case "STR", "STR$": return .string(formatStr(evaluated[0]))
         case "VAL": return QBValue.from(Double(evaluated[0].asString) ?? 0, type: .variant)
@@ -580,9 +613,12 @@ public final class Executor: @unchecked Sendable {
     }
 
     private func preloadData(from program: ParsedProgram) throws {
+        environment.resetData()
         for line in program.lines {
             for statement in line.statements {
                 if case .data(let values) = statement {
+                    let lineNum = line.lineNumber ?? line.sourceLine
+                    environment.registerDataLine(lineNum)
                     let resolved = try values.map { try evaluate($0) }
                     environment.appendData(resolved)
                 }
@@ -605,7 +641,7 @@ public final class Executor: @unchecked Sendable {
         while index < program.lines.count {
             for statement in program.lines[index].statements {
                 switch (keyword, statement) {
-                case (.next, .next), (.loop, .loop), (.wend, .wend):
+                case (.next, .next), (.loop, .loop(_)), (.wend, .wend):
                     return index
                 default:
                     break

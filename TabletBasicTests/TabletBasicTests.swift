@@ -62,6 +62,45 @@ final class TabletBasicTests: XCTestCase {
     }
 
     @MainActor
+    func testInputPromptSuspendsUntilSubmit() async throws {
+        let viewModel = IDEViewModel()
+        viewModel.sourceCode = """
+        INPUT "length"; L
+        INPUT "breadth"; B
+        A = L * B
+        PRINT "area="; A
+        """
+        viewModel.runProgram()
+
+        for _ in 0..<30 {
+            if viewModel.showInputPrompt { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        XCTAssertTrue(viewModel.showInputPrompt)
+        XCTAssertEqual(viewModel.inputPromptText, "length")
+
+        viewModel.inputPromptValue = "5"
+        viewModel.submitInputPrompt()
+
+        for _ in 0..<30 {
+            if viewModel.showInputPrompt { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        XCTAssertTrue(viewModel.showInputPrompt)
+        XCTAssertEqual(viewModel.inputPromptText, "breadth")
+
+        viewModel.inputPromptValue = "4"
+        viewModel.submitInputPrompt()
+
+        try await waitForProgramFinish(viewModel)
+        XCTAssertTrue(viewModel.outputText.contains("area="))
+        XCTAssertTrue(viewModel.outputText.contains("20"))
+        XCTAssertFalse(viewModel.showInputPrompt)
+    }
+
+    @MainActor
     func testLoadMathBasAndRunThroughViewModel() async throws {
         let viewModel = IDEViewModel()
         guard let math = SampleProgramLibrary.all.first(where: { $0.filename == "MATH.BAS" }) else {

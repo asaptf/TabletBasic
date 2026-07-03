@@ -35,7 +35,15 @@ public final class QBInterpreter: @unchecked Sendable {
     }
 
     public func runImmediate(_ source: String) async {
-        let wrapped = "10 \(source)\n20 END\n"
+        let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized: String
+        if trimmed.first == "?" {
+            let rest = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
+            normalized = rest.isEmpty ? "PRINT" : "PRINT \(rest)"
+        } else {
+            normalized = trimmed
+        }
+        let wrapped = "10 \(normalized)\n20 END\n"
         await run(wrapped)
     }
 }

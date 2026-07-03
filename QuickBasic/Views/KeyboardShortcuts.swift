@@ -1,10 +1,27 @@
 import SwiftUI
 
+private enum FunctionKey {
+    static let f1 = "\u{F704}"
+    static let f5 = "\u{F708}"
+}
+
 struct KeyboardShortcutsModifier: ViewModifier {
     @ObservedObject var viewModel: IDEViewModel
 
     func body(content: Content) -> some View {
         content
+            .onKeyPress(phases: .down) { press in
+                switch press.characters {
+                case FunctionKey.f1:
+                    viewModel.handleShortcut(.help)
+                    return .handled
+                case FunctionKey.f5:
+                    viewModel.handleShortcut(.run)
+                    return .handled
+                default:
+                    return .ignored
+                }
+            }
             .onKeyPress(.init("\r"), phases: .down) { press in
                 if viewModel.showWelcome {
                     viewModel.handleShortcut(.dismissWelcomeToGuide)

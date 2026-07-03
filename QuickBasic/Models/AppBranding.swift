@@ -2,7 +2,9 @@ import Foundation
 
 enum AppBranding {
     static let name = "TabletBasic"
-    static let version = "1.0"
+    static let version: String = {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }()
     static let fullTitle = "\(name) Version \(version)"
     static let authorName = "Andrey Sapunov"
     static let copyright = "Copyright 2026 \(authorName)"

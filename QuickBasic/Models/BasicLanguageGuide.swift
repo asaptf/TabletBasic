@@ -74,7 +74,7 @@ enum BasicLanguageGuide {
             Output and input:
               PRINT "Hello"; NAME$
               PRINT A, B          ' comma advances to next print zone
-              INPUT "Name"; N$
+              INPUT "Name"; N$    ' shows a prompt dialog while the program runs
 
             Assignment:
               LET X = 10          ' LET is optional
@@ -83,6 +83,13 @@ enum BasicLanguageGuide {
             Control flow:
               IF X > 0 THEN PRINT "Positive"
               IF X < 0 THEN PRINT "Negative" ELSE PRINT "Zero"
+
+            Block IF (multiple statements per branch):
+              IF SCORE% >= 60 THEN
+                  PRINT "Pass"
+              ELSE
+                  PRINT "Fail"
+              END IF
 
             Program structure:
               END                 ' stop execution
@@ -115,20 +122,43 @@ enum BasicLanguageGuide {
             DO...LOOP — flexible repetition:
               DO
                   PRINT "At least once"
-              LOOP WHILE X < 10
+              LOOP
 
               DO WHILE X < 10
                   X = X + 1
               LOOP
 
-              DO
+              DO UNTIL X >= 10
                   X = X + 1
-              LOOP UNTIL X >= 10
+              LOOP
+
+            Bottom-tested LOOP WHILE/UNTIL are not supported yet; use DO WHILE/UNTIL
+            at the top, or EXIT DO inside the loop body.
 
             Early exit:
               EXIT FOR
               EXIT DO
               EXIT WHILE
+            """
+        ),
+        Section(
+            id: "select-case",
+            title: "SELECT CASE",
+            content: """
+            Multi-way branching on one expression:
+
+              SELECT CASE CHOICE%
+              CASE 1
+                  PRINT "Option 1"
+              CASE 2, 3
+                  PRINT "Option 2 or 3"
+              CASE IS > 10
+                  PRINT "Large"
+              CASE ELSE
+                  PRINT "Other"
+              END SELECT
+
+            CASE values are matched in order; CASE ELSE runs when nothing else matches.
             """
         ),
         Section(
@@ -176,8 +206,8 @@ enum BasicLanguageGuide {
               ITEMS$(1) = "First"
               PRINT ITEMS$(1)
 
-            Multi-dimensional arrays:
-              DIM GRID%(3, 3)
+            Multi-dimensional arrays (use explicit lower/upper bounds per dimension):
+              DIM GRID%(1, 3, 1, 3)
               GRID%(2, 2) = 99
             """
         ),
@@ -192,6 +222,8 @@ enum BasicLanguageGuide {
               LEN(S$)             ' length in characters
               LEFT$(S$, N)        ' first N characters
               RIGHT$(S$, N)       ' last N characters
+              MID$(S$, start, len) ' substring from start (1-based)
+              UCASE$(S$)          ' uppercase
               STR$(N)             ' number to string
               VAL(S$)             ' string to number
               CHR$(N)             ' character from ASCII code
@@ -200,6 +232,8 @@ enum BasicLanguageGuide {
               WORD$ = "TabletBasic"
               PRINT LEN(WORD$)
               PRINT LEFT$(WORD$, 6)
+              PRINT MID$(WORD$, 7, 5)
+              PRINT UCASE$(WORD$)
             """
         ),
         Section(

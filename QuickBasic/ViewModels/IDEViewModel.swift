@@ -21,8 +21,12 @@ final class IDEViewModel: ObservableObject {
     @Published var documentName: String = "Untitled"
     @Published var cursorLine: Int = 1
     @Published var cursorColumn: Int = 1
+    @Published var showInputPrompt: Bool = false
+    @Published var inputPromptText: String = ""
+    @Published var inputPromptValue: String = ""
 
     private let interpreter = QBInterpreter()
+    private var inputContinuation: CheckedContinuation<String, Never>?
     private let consoleOutput = ConsoleOutputHandler()
     private var documentBookmark: Data?
 
@@ -51,6 +55,7 @@ final class IDEViewModel: ObservableObject {
 
     func runProgram() {
         guard !isRunning else { return }
+        cancelPendingInput()
         isRunning = true
         showRunOutput = true
         showWelcome = false
@@ -202,12 +207,34 @@ final class IDEViewModel: ObservableObject {
     }
 
     func clearOutput() {
+        cancelPendingInput()
         outputText = ""
         consoleOutput.clear()
         interpreter.screen.reset()
         screenRevision += 1
         showRunOutput = false
     }
+
+    func submitInputPrompt() {
+        let value = inputPromptValue
+        inputPromptValue = ""
+        inputPromptText = ""
+        showInputPrompt = false
+        statusMessage = ""
+        inputContinuation?.resume(returning: value)
+        inputContinuation = nil
+    }
+
+    private func cancelPendingInput(returning value: String = "") {
+        guard inputContinuation != nil else { return }
+        inputPromptValue = ""
+        inputPromptText = ""
+        showInputPrompt = false
+        inputContinuation?.resume(returning: value)
+        inputContinuation = nil
+    }
+
+
 
     var preparedSource: String {
         BasicSourceNormalizer.normalize(sourceCode)
@@ -321,7 +348,15 @@ enum IDEAction: String {
 
 extension IDEViewModel: QBInputHandler {
     nonisolated func prompt(_ text: String) async throws -> String {
-        await MainActor.run { self.statusMessage = "INPUT: \(text)" }
-        return ""
+        await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                self.inputContinuation = continuation
+                self.inputPromptText = text
+                self.inputPromptValue = ""
+                self.showInputPrompt = true
+                self.showRunOutput = true
+                self.statusMessage = "INPUT: \(text)"
+            }
+        }
     }
 }

@@ -6,7 +6,9 @@ public final class Environment: @unchecked Sendable {
     private var defaultTypes: [Character: QBType] = [:]
     private var dataItems: [QBValue] = []
     private var dataPointer: Int = 0
+    private var dataLineStarts: [(line: Int, index: Int)] = []
     public var randomSeed: UInt64 = 1
+    public private(set) var lastRandom: Double = 0
 
     public init() {
         seedRandom()
@@ -66,6 +68,18 @@ public final class Environment: @unchecked Sendable {
         arrays[key] = try QBArray(type: type, bounds: bounds)
     }
 
+    public func resetData() {
+        dataItems = []
+        dataPointer = 0
+        dataLineStarts = []
+    }
+
+    public var dataCount: Int { dataItems.count }
+
+    public func registerDataLine(_ lineNumber: Int) {
+        dataLineStarts.append((line: lineNumber, index: dataItems.count))
+    }
+
     public func appendData(_ values: [QBValue]) {
         dataItems.append(contentsOf: values)
     }
@@ -84,7 +98,11 @@ public final class Environment: @unchecked Sendable {
     }
 
     public func restoreToLine(_ line: Int) {
-        dataPointer = max(0, min(line, dataItems.count))
+        if let match = dataLineStarts.first(where: { $0.line >= line }) {
+            dataPointer = match.index
+        } else {
+            dataPointer = dataItems.count
+        }
     }
 
     public func seedRandom(_ seed: Int? = nil) {
@@ -97,7 +115,9 @@ public final class Environment: @unchecked Sendable {
 
     public func nextRandom() -> Double {
         randomSeed = randomSeed &* 1_103_515_245 &+ 12_345
-        return Double(randomSeed % 32_768) / 32_768.0
+        let value = Double(randomSeed % 32_768) / 32_768.0
+        lastRandom = value
+        return value
     }
 
     private func coerce(_ value: QBValue, to type: QBType) -> QBValue {

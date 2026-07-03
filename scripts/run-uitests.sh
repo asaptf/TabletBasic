@@ -17,10 +17,14 @@ LOG="${LOG:-/tmp/tabletbasic-uitest.log}"
 
 TESTS=("$@")
 if [ ${#TESTS[@]} -eq 0 ]; then
+  # Default: small smoke subset from SampleProgramsUITests.swift.
+  # Full suite (pass as args or run without -only-testing filters):
+  #   TabletBasicUITests/SampleProgramsUITests/testLibraryListsAllSamplePrograms
+  #   TabletBasicUITests/SampleProgramsUITests/testEverySampleProgramRunsFromEditor
+  #   TabletBasicUITests/SampleProgramsUITests/testEverySampleProgramLoadsAndRunsFromLibrary
+  #   TabletBasicUITests/SampleProgramsUITests/testEverySampleProgramLoadsAndRuns
   TESTS=(
-    "TabletBasicUITests/SampleProgramsUITests/testDATAREAD_BAS"
-    "TabletBasicUITests/SampleProgramsUITests/testMENU_BAS"
-    "TabletBasicUITests/SampleProgramsUITests/testFLAG_BAS"
+    "TabletBasicUITests/SampleProgramsUITests/testLibraryListsAllSamplePrograms"
   )
 fi
 

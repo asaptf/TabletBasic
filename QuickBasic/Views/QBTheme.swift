@@ -16,6 +16,7 @@ enum QBTheme {
     static let lineNumberText = Color(red: 0.7, green: 0.85, blue: 1.0)
     static let immediateText = Color.white
     static let statusText = Color.white
+    static let statusSecondaryText = Color(red: 0.7, green: 0.85, blue: 1.0)
 
     static let dialogBackground = Color(red: 0.93, green: 0.93, blue: 0.93)
     static let dialogText = Color.black

@@ -18,6 +18,8 @@ being an emulator or a Microsoft product.
 - Immediate mode for trying small expressions and statements quickly.
 - A learning guide with 16 step-by-step chapters covering the full language.
 - A sample program library with 80 built-in programs.
+- Open, save, and save-as for `.bas` files via the system file picker.
+- Interactive `INPUT` prompts while a program runs.
 - Text output plus simple graphics output inspired by classic `SCREEN 13`.
 - Unit and UI test targets for the app and interpreter.
 
@@ -29,7 +31,8 @@ learning:
 - Variables with classic suffixes: `%`, `&`, `!`, `#`, `$`.
 - Numeric and string expressions.
 - `PRINT`, `INPUT`, `LET`, assignment, `REM`.
-- `IF...THEN...ELSE`.
+- `IF...THEN...ELSE` and block `IF...END IF`.
+- `SELECT CASE...CASE...END SELECT`.
 - `FOR...NEXT`, `WHILE...WEND`, `DO...LOOP`, `EXIT`.
 - Line-number control flow: `GOTO`, `GOSUB`, `RETURN`, `ON...GOTO`,
   `ON...GOSUB`.
@@ -37,6 +40,7 @@ learning:
 - Inline data with `DATA`, `READ`, and `RESTORE`.
 - Random numbers with `RANDOMIZE` and `RND`.
 - Simple graphics: `SCREEN`, `CLS`, `COLOR`, `PSET`, `PRESET`, `LINE`, `CIRCLE`.
+- String functions including `LEFT$`, `RIGHT$`, `MID$`, `UCASE$`, `LEN`, `STR$`, `VAL`.
 - A small set of built-in math and formatting functions.
 
 The goal is educational compatibility, not full QuickBASIC compatibility. Some
@@ -51,6 +55,8 @@ the current scope.
 |-- QBEngine/               Swift Package containing the BASIC engine
 |-- TabletBasicTests/       App unit tests
 |-- TabletBasicUITests/     UI tests and sample-program smoke tests
+|-- fastlane/               App Store metadata, screenshots, and release lanes
+|-- scripts/                Build and UI-test helper scripts
 |-- project.yml             XcodeGen project definition
 |-- TabletBasic.xcodeproj/  Generated Xcode project
 `-- simulator-launch.png    README screenshot
@@ -101,6 +107,20 @@ swift run qbengine-cli
 
 For app and UI tests, use the `TabletBasic` scheme in Xcode.
 
+## CI / Local Validation
+
+From the repo root:
+
+```sh
+cd QBEngine && swift test
+./scripts/build.sh
+./scripts/run-uitests.sh
+```
+
+`scripts/build.sh` builds the app for an available iOS Simulator (iPad by default).
+`scripts/run-uitests.sh` runs a UI-test smoke subset; set `DEVICE_KIND=iphone` to
+prefer an iPhone simulator.
+
 ## Design Notes
 
 TabletBasic deliberately keeps the interface simple and tactile. The IDE is
@@ -114,10 +134,10 @@ sample programs, and rendering text/graphics output.
 
 ## Roadmap Ideas
 
-- Better editing tools and file persistence.
-- More QuickBASIC-compatible statements and functions.
+- Better editing tools (syntax helpers, undo, multi-cursor).
+- More QuickBASIC-compatible statements and functions (e.g. bottom-tested
+  `LOOP UNTIL` / `LOOP WHILE`).
 - Richer graphics commands and palette behavior.
-- Interactive `INPUT` handling.
 - Additional sample programs and advanced language features.
 - Better diagnostics with source locations and fix suggestions.
 

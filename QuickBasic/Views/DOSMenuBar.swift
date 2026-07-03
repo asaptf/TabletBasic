@@ -49,21 +49,9 @@ struct DOSMenuBar: View {
             DOSMenuDefinition(title: "View", items: [
                 .init("Return to Editor", action: .returnToEditor)
             ]),
-            DOSMenuDefinition(title: "Search", items: [
-                .init("Find...", action: nil, enabled: false),
-                .init("Find Next", action: nil, enabled: false)
-            ]),
             DOSMenuDefinition(title: "Run", items: [
                 .init("Start", action: .run),
                 .init("Restart", action: .run)
-            ]),
-            DOSMenuDefinition(title: "Debug", items: [
-                .init("Step", action: nil, enabled: false),
-                .init("Trace Into", action: nil, enabled: false)
-            ]),
-            DOSMenuDefinition(title: "Options", items: [
-                .init("Display...", action: nil, enabled: false),
-                .init("Language...", action: nil, enabled: false)
             ]),
             DOSMenuDefinition(title: "Help", items: [
                 .init("Help (F1)", action: .help),

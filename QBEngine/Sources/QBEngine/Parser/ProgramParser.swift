@@ -321,7 +321,13 @@ private struct LineParser {
 
         if case .keyword(.loop) = token.kind {
             advance()
-            return .loop
+            if matchKeyword(.while) {
+                return .loop(.while(try parseExpression()))
+            }
+            if matchKeyword(.until) {
+                return .loop(.until(try parseExpression()))
+            }
+            return .loop(nil)
         }
 
         if case .keyword(.exit) = token.kind {
@@ -649,8 +655,7 @@ private struct LineParser {
                 if match(.lparen) {
                     let arg = try parseExpression()
                     try consume(.rparen, message: "Expected ')' after TAB")
-                    items.append(.tab(nil))
-                    _ = arg
+                    items.append(.tab(arg))
                 } else {
                     items.append(.tab(nil))
                 }
@@ -727,19 +732,17 @@ private struct LineParser {
 
     private mutating func parseLineStatement() throws -> Statement {
         var boxed = false
-        if match(.lparen) {
-            boxed = true
-        }
+        let parenStart = match(.lparen)
         let x1 = try parseExpression()
         try consume(.comma, message: "Expected ',' in LINE")
         let y1 = try parseExpression()
+        if parenStart {
+            try consume(.rparen, message: "Expected ')' after LINE start point")
+        }
         var x2: Expr?
         var y2: Expr?
         var color: Expr?
         if match(.minus) || matchKeyword(.to) {
-            if !matchKeyword(.to) && !check(.lparen) {
-                // handled minus
-            }
             if match(.lparen) {
                 x2 = try parseExpression()
                 try consume(.comma, message: "Expected ','")
@@ -752,7 +755,33 @@ private struct LineParser {
             }
         }
         if match(.comma) {
-            color = try parseExpression()
+            if let token = peek(), case .identifier(let rawName) = token.kind {
+                let flag = rawName.uppercased()
+                if flag == "B" || flag == "BF" {
+                    advance()
+                    boxed = true
+                } else {
+                    color = try parseExpression()
+                    if match(.comma),
+                       let next = peek(), case .identifier(let boxName) = next.kind {
+                        let boxFlag = boxName.uppercased()
+                        if boxFlag == "B" || boxFlag == "BF" {
+                            advance()
+                            boxed = true
+                        }
+                    }
+                }
+            } else {
+                color = try parseExpression()
+                if match(.comma),
+                   let next = peek(), case .identifier(let boxName) = next.kind {
+                    let boxFlag = boxName.uppercased()
+                    if boxFlag == "B" || boxFlag == "BF" {
+                        advance()
+                        boxed = true
+                    }
+                }
+            }
         }
         return .line(x1, y1, x2, y2, color, boxed)
     }

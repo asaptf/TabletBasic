@@ -174,7 +174,7 @@ public final class ScreenBuffer: @unchecked Sendable {
 
     public func drawLine(x1: Int, y1: Int, x2: Int, y2: Int, colorIndex: Int, boxed: Bool) {
         if boxed {
-            drawRect(x1: x1, y1: y1, x2: x2, y2: y2, colorIndex: colorIndex)
+            fillRect(x1: x1, y1: y1, x2: x2, y2: y2, colorIndex: colorIndex)
             return
         }
         var x = x1
@@ -267,18 +267,15 @@ public final class ScreenBuffer: @unchecked Sendable {
         }
     }
 
-    private func drawRect(x1: Int, y1: Int, x2: Int, y2: Int, colorIndex: Int) {
+    private func fillRect(x1: Int, y1: Int, x2: Int, y2: Int, colorIndex: Int) {
         let left = min(x1, x2)
         let right = max(x1, x2)
         let top = min(y1, y2)
         let bottom = max(y1, y2)
-        for x in left...right {
-            pset(x: x, y: top, colorIndex: colorIndex)
-            pset(x: x, y: bottom, colorIndex: colorIndex)
-        }
         for y in top...bottom {
-            pset(x: left, y: y, colorIndex: colorIndex)
-            pset(x: right, y: y, colorIndex: colorIndex)
+            for x in left...right {
+                pset(x: x, y: y, colorIndex: colorIndex)
+            }
         }
     }
 

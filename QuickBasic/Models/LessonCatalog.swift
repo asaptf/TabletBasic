@@ -169,25 +169,26 @@ enum LessonCatalog {
             title: "DO...LOOP",
             subtitle: "Flexible top and bottom loops",
             description: """
-            DO...LOOP is another repetition form that can test its condition at the top or bottom. \
-            Use WHILE or UNTIL after DO or LOOP to control when the loop continues. \
+            DO...LOOP is another repetition form that can test its condition at the top. \
+            Use WHILE or UNTIL after DO to control when the loop continues. \
             EXIT DO lets you leave early when a special case is found inside the loop.
             """,
             starterCode: """
             ' Chapter 7: DO...LOOP
+            GUESS% = 0
             COUNT% = 0
             PRINT "Guessing game (fixed answer):"
-            DO
+            DO UNTIL GUESS% = 4
                 COUNT% = COUNT% + 1
                 GUESS% = COUNT% * 3 MOD 7 + 1
                 PRINT "Try"; COUNT%; ":"; GUESS%
-            LOOP UNTIL GUESS% = 4
+            LOOP
             PRINT "Found it on try"; COUNT%
             """,
             expectedOutput: "Guessing game",
             hints: [
-                "DO WHILE condition runs zero or more times; DO UNTIL runs at least once.",
-                "LOOP WHILE and LOOP UNTIL test after each iteration.",
+                "DO WHILE condition runs zero or more times; DO UNTIL stops when the condition becomes true.",
+                "A plain DO...LOOP always runs at least once before the matching LOOP.",
                 "EXIT DO jumps out immediately — useful inside nested logic."
             ],
             chapter: 7,

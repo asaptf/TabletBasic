@@ -11,6 +11,7 @@
 		14E5161014A7F63901FD2408 /* LessonCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA99F7DF324C4A5C30FEF1 /* LessonCatalog.swift */; };
 		331EB29D9A7314F93EF4C720 /* TabletBasicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F8A1982424024A1C68AFE0 /* TabletBasicApp.swift */; };
 		391FC4BE5A414ED34847C5E2 /* QBEngine in Frameworks */ = {isa = PBXBuildFile; productRef = ACE075B8801243F8EB9BF659 /* QBEngine */; };
+		4256F9FC0B206B458F3FBB43 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7AAD35928565F20FB55AAEFE /* PrivacyInfo.xcprivacy */; };
 		4DA80E36EA7A81F441DAE4BC /* ProgramLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2BE87013C68659342DF5750 /* ProgramLibraryView.swift */; };
 		51ED1C311176717F3BC5B6FC /* QBEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5DACDD412BD0EBA04FC7ADF7 /* QBEngine */; };
 		53E380DFBC08F3CAECA8EAD4 /* LayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B6782F0230023A8A45B91B /* LayoutMetrics.swift */; };
@@ -71,6 +72,7 @@
 		597774FB41C6BA6F01B38829 /* TabletBasicUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TabletBasicUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		732FAF7E6BE1AF4445AE73D4 /* SampleProgramsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleProgramsUITests.swift; sourceTree = "<group>"; };
 		74B6782F0230023A8A45B91B /* LayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutMetrics.swift; sourceTree = "<group>"; };
+		7AAD35928565F20FB55AAEFE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7F490449B21B10E636CCF579 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 		86F8A1982424024A1C68AFE0 /* TabletBasicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletBasicApp.swift; sourceTree = "<group>"; };
 		894AFF9542B9D96F04BC8F78 /* CodeEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditorView.swift; sourceTree = "<group>"; };
@@ -126,6 +128,7 @@
 			children = (
 				FDD4475D04E2AEFC15514A58 /* Assets.xcassets */,
 				32B405CF4C720C8516C89974 /* Info.plist */,
+				7AAD35928565F20FB55AAEFE /* PrivacyInfo.xcprivacy */,
 				92E7220CDFEFDA6F3A0584D7 /* App */,
 				9EE1F7572F31642057B037D2 /* Models */,
 				519599C617AE6EA81093C340 /* ViewModels */,
@@ -342,6 +345,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7E8BC1EF1201951C303905A3 /* Assets.xcassets in Resources */,
+				4256F9FC0B206B458F3FBB43 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

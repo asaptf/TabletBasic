@@ -27,7 +27,7 @@ public enum BinaryOp: String, Sendable {
 public enum PrintItem: Sendable {
     case expression(Expr)
     case separator(Separator)
-    case tab(Int?)
+    case tab(Expr?)
     case spc(Int)
 }
 
@@ -68,7 +68,7 @@ public indirect enum Statement: Sendable {
     case whileLoop(Expr, [Statement])
     case wend
     case doLoop(DoMode, Expr?, [Statement])
-    case loop
+    case loop(DoMode?)
     case exitFor, exitDo, exitWhile
     case goto(Int)
     case gosub(Int)
