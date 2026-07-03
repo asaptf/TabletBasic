@@ -120,6 +120,13 @@ sample programs, and rendering text/graphics output.
 - More lessons focused on programming fundamentals.
 - Better diagnostics with source locations and fix suggestions.
 
+## License
+
+Copyright 2026 Andrey Sapunov
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the
+full license text.
+
 ## Trademark Notice
 
 TabletBasic is an independent project and is not affiliated with, endorsed by,
