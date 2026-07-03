@@ -6,7 +6,7 @@ struct HelpView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
                     helpSection("Keys", """
                     F1          Display this help
                     F5          Start program
@@ -17,17 +17,20 @@ struct HelpView: View {
                     helpSection("Menus", """
                     File > Open...               Open .bas from Files / iCloud
                     File > Save / Save As...     Save to Files / iCloud
-                    File > Open Sample Program   20 built-in demos
+                    File > Open Sample Program   80 built-in demos
                     Run > Start                  Run current program
-                    Help > Learning Guide        Step-by-step lessons
+                    Help > Learning Guide        16 step-by-step chapters
                     Help > About                 Author and app info
                     """)
 
-                    helpSection("Statements", """
-                    PRINT  INPUT  IF...THEN  FOR...NEXT
-                    WHILE...WEND  GOSUB  RETURN  GOTO
-                    DIM  DATA  READ  SCREEN  LINE  CIRCLE
-                    """)
+                    Divider()
+
+                    Text("Language Reference")
+                        .font(.title2.bold())
+
+                    ForEach(BasicLanguageGuide.sections) { section in
+                        helpSection(section.title, section.content)
+                    }
                 }
                 .padding()
             }
@@ -45,6 +48,7 @@ struct HelpView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.headline)
             Text(content)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

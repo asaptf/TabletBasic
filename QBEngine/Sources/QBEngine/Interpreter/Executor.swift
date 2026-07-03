@@ -425,15 +425,15 @@ public final class Executor: @unchecked Sendable {
                 return .single(environment.nextRandom())
             }
             return .single(environment.nextRandom())
-        case "CHR$": return .string(String(Character(UnicodeScalar(evaluated[0].asInt % 256)!)))
-        case "STR$": return .string(evaluated[0].asString)
+        case "CHR", "CHR$": return .string(String(Character(UnicodeScalar(evaluated[0].asInt % 256)!)))
+        case "STR", "STR$": return .string(evaluated[0].asString)
         case "VAL": return QBValue.from(Double(evaluated[0].asString) ?? 0, type: .variant)
         case "LEN": return .integer(evaluated[0].asString.count)
-        case "LEFT$":
+        case "LEFT", "LEFT$":
             let s = evaluated[0].asString
             let n = max(0, evaluated[1].asInt)
             return .string(String(s.prefix(n)))
-        case "RIGHT$":
+        case "RIGHT", "RIGHT$":
             let s = evaluated[0].asString
             let n = max(0, evaluated[1].asInt)
             return .string(String(s.suffix(n)))

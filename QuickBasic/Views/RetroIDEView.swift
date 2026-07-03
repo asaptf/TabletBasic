@@ -82,7 +82,7 @@ private struct RunOutputView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var hasGraphics: Bool {
-        viewModel.screen.width >= 320 && viewModel.screen.height >= 200
+        viewModel.screen.isGraphicsMode
     }
 
     private var compactLayout: Bool {

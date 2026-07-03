@@ -1,4 +1,5 @@
 import SwiftUI
+import QBEngine
 
 struct LearningView: View {
     @ObservedObject var viewModel: IDEViewModel
@@ -99,6 +100,10 @@ struct LessonDetailView: View {
 
                 Text(lesson.description)
 
+                if !lesson.relatedSamples.isEmpty {
+                    relatedSamplesSection
+                }
+
                 Text(lesson.starterCode)
                     .font(QBTheme.monoFont)
                     .padding()
@@ -116,6 +121,30 @@ struct LessonDetailView: View {
             .padding(LayoutMetrics.isCompact(horizontalSizeClass) ? 16 : 24)
         }
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var relatedSamplesSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Related Sample Programs")
+                .font(.headline)
+            Text("Open these from File > Open Sample Program, or tap to load into the editor.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)], alignment: .leading, spacing: 8) {
+                ForEach(lesson.relatedSamples, id: \.self) { filename in
+                    Button(filename) {
+                        if let program = SampleProgramLibrary.all.first(where: {
+                            $0.filename.caseInsensitiveCompare(filename) == .orderedSame
+                        }) {
+                            viewModel.loadSampleProgram(program)
+                            onClose?()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .font(QBTheme.monoSmall)
+                }
+            }
+        }
     }
 
     @ViewBuilder

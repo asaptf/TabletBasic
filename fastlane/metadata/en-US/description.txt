@@ -5,7 +5,7 @@ Inspired by Microsoft QuickBASIC, TabletBasic brings back the fast, friendly lea
 Designed for learning:
 - Write and run BASIC programs in a focused retro IDE.
 - Try quick commands in immediate mode.
-- Explore 20 built-in sample programs.
+- Explore 80 built-in sample programs across 8 categories.
 - Follow beginner-friendly lessons.
 - Learn variables, loops, conditions, subroutines, arrays, data, random numbers, and expressions.
 - Draw simple graphics with SCREEN, LINE, CIRCLE, PSET, and COLOR.

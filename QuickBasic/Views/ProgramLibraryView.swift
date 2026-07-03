@@ -86,7 +86,7 @@ struct ProgramLibraryView: View {
                 ContentUnavailableView(
                     "Select a Program",
                     systemImage: "doc.text",
-                    description: Text("Choose one of 20 sample programs to load into the editor.")
+                    description: Text("Choose one of 80 sample programs to load into the editor.")
                 )
             }
         }

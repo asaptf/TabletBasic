@@ -8,4 +8,5 @@ enum AppBranding {
     static let copyright = "Copyright 2026 \(authorName)"
     static let guideTitle = "\(name) Learning Guide"
     static let linkedInURL = URL(string: "https://www.linkedin.com/in/andrey-sapunov/")!
+    static let repositoryURL = URL(string: "https://github.com/asaptf/TabletBasic")!
 }

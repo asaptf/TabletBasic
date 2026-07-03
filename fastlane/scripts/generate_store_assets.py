@@ -173,7 +173,7 @@ def screenshot_editor() -> None:
 def screenshot_samples() -> None:
     image = draw_shell("Sample Programs")
     draw = ImageDraw.Draw(image)
-    draw_caption(draw, "20 sample programs", "Learn from ready-made examples for text, loops, data, math, and graphics.")
+    draw_caption(draw, "80 sample programs", "Learn from ready-made examples for text, loops, data, math, and graphics.")
 
     left = (170, 540, 760, 2050)
     right = (780, 540, 1894, 2050)
@@ -381,7 +381,7 @@ def phone_editor() -> None:
 def phone_samples() -> None:
     image = draw_phone_shell("Sample Programs")
     draw = ImageDraw.Draw(image)
-    draw_phone_caption(draw, "20 sample programs", "Open examples for loops, math, data, and graphics.")
+    draw_phone_caption(draw, "80 sample programs", "Open examples for loops, math, data, and graphics.")
     panel = (70, 560, 1250, 2100)
     draw.rounded_rectangle(panel, radius=8, fill=PANEL, outline=INK, width=4)
     draw.text((112, 618), "Sample Programs", font=PHONE_TITLE, fill=INK)

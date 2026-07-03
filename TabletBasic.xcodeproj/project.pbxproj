@@ -8,7 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		0CDA3BBF9F7182825E99F1C9 /* GraphicsCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0184E3EA52B854D226140D /* GraphicsCanvasView.swift */; };
+		14E5161014A7F63901FD2408 /* LessonCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA99F7DF324C4A5C30FEF1 /* LessonCatalog.swift */; };
 		331EB29D9A7314F93EF4C720 /* TabletBasicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F8A1982424024A1C68AFE0 /* TabletBasicApp.swift */; };
+		391FC4BE5A414ED34847C5E2 /* QBEngine in Frameworks */ = {isa = PBXBuildFile; productRef = ACE075B8801243F8EB9BF659 /* QBEngine */; };
 		4DA80E36EA7A81F441DAE4BC /* ProgramLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2BE87013C68659342DF5750 /* ProgramLibraryView.swift */; };
 		51ED1C311176717F3BC5B6FC /* QBEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5DACDD412BD0EBA04FC7ADF7 /* QBEngine */; };
 		53E380DFBC08F3CAECA8EAD4 /* LayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B6782F0230023A8A45B91B /* LayoutMetrics.swift */; };
@@ -18,6 +20,7 @@
 		7E8BC1EF1201951C303905A3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FDD4475D04E2AEFC15514A58 /* Assets.xcassets */; };
 		8FD1175DD609D77953C2D3D5 /* AppBranding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5085F0A68DFB3B21FF65DF9C /* AppBranding.swift */; };
 		962E73D9E31D5C08E069D14C /* LearningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2302FB2F00EF5C3AFB5B6566 /* LearningView.swift */; };
+		A23E152CA3E17B51A367AEE3 /* BasicLanguageGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99F7B494F5F8B29DF0D285C1 /* BasicLanguageGuide.swift */; };
 		A3CD6697F4C898F218A7C82D /* TabletBasicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02F2B179703C33ABE1952BC /* TabletBasicTests.swift */; };
 		A412B7325D6E81AA72665293 /* IDEViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5911551A37E5D85F4320FCE5 /* IDEViewModel.swift */; };
 		A468E1851CE1AE36E7E157C1 /* TabletBasicUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15D2EE517633F7297558EE1 /* TabletBasicUITests.swift */; };
@@ -71,6 +74,7 @@
 		7F490449B21B10E636CCF579 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 		86F8A1982424024A1C68AFE0 /* TabletBasicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletBasicApp.swift; sourceTree = "<group>"; };
 		894AFF9542B9D96F04BC8F78 /* CodeEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditorView.swift; sourceTree = "<group>"; };
+		99F7B494F5F8B29DF0D285C1 /* BasicLanguageGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicLanguageGuide.swift; sourceTree = "<group>"; };
 		9C2DA76194C3BD20CB02D54A /* KeyboardShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcuts.swift; sourceTree = "<group>"; };
 		A165AE74E4B66B62BE07D737 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		A59F2233BA019BB0A2A64363 /* RetroIDEView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetroIDEView.swift; sourceTree = "<group>"; };
@@ -80,6 +84,7 @@
 		C54EA3B57ADB0DE250E4BC90 /* Lesson.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lesson.swift; sourceTree = "<group>"; };
 		C890B2B1F706897EC3C0A91F /* TabletBasicTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TabletBasicTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D15D2EE517633F7297558EE1 /* TabletBasicUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletBasicUITests.swift; sourceTree = "<group>"; };
+		D9EA99F7DF324C4A5C30FEF1 /* LessonCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LessonCatalog.swift; sourceTree = "<group>"; };
 		DB3A267474297CEEA9D1B4CB /* TabletBasic.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TabletBasic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC47CE3BBDDCA8FE6756CB94 /* QBTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QBTheme.swift; sourceTree = "<group>"; };
 		E7F6DF032F117F6145E8410A /* UITestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHelpers.swift; sourceTree = "<group>"; };
@@ -94,6 +99,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				51ED1C311176717F3BC5B6FC /* QBEngine in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A0442C92BB52E25ED924C16C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				391FC4BE5A414ED34847C5E2 /* QBEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -195,8 +208,10 @@
 			isa = PBXGroup;
 			children = (
 				5085F0A68DFB3B21FF65DF9C /* AppBranding.swift */,
+				99F7B494F5F8B29DF0D285C1 /* BasicLanguageGuide.swift */,
 				2A843057DAA47530278CB1AE /* BasicProgramDocument.swift */,
 				C54EA3B57ADB0DE250E4BC90 /* Lesson.swift */,
+				D9EA99F7DF324C4A5C30FEF1 /* LessonCatalog.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -245,6 +260,7 @@
 			buildConfigurationList = 2D1C9B13CE20E4E5E1C0F5D6 /* Build configuration list for PBXNativeTarget "TabletBasicUITests" */;
 			buildPhases = (
 				825C25081372E60807A0B8E9 /* Sources */,
+				A0442C92BB52E25ED924C16C /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -253,6 +269,7 @@
 			);
 			name = TabletBasicUITests;
 			packageProductDependencies = (
+				ACE075B8801243F8EB9BF659 /* QBEngine */,
 			);
 			productName = TabletBasicUITests;
 			productReference = 597774FB41C6BA6F01B38829 /* TabletBasicUITests.xctest */;
@@ -337,6 +354,7 @@
 			files = (
 				A93E602422750DA6A6966504 /* AboutView.swift in Sources */,
 				8FD1175DD609D77953C2D3D5 /* AppBranding.swift in Sources */,
+				A23E152CA3E17B51A367AEE3 /* BasicLanguageGuide.swift in Sources */,
 				CA0E11A0F782A814A6408582 /* BasicProgramDocument.swift in Sources */,
 				C760EDF8288D5AC0B29DDEA4 /* BasicSyntaxHighlighter.swift in Sources */,
 				D12316AB9509D61F7B2BFC91 /* CodeEditorView.swift in Sources */,
@@ -349,6 +367,7 @@
 				53E380DFBC08F3CAECA8EAD4 /* LayoutMetrics.swift in Sources */,
 				962E73D9E31D5C08E069D14C /* LearningView.swift in Sources */,
 				77DC9526E48D87CE11CE5419 /* Lesson.swift in Sources */,
+				14E5161014A7F63901FD2408 /* LessonCatalog.swift in Sources */,
 				4DA80E36EA7A81F441DAE4BC /* ProgramLibraryView.swift in Sources */,
 				BD81D58DA912B965F46DC109 /* QBTheme.swift in Sources */,
 				C2F48242C7D686779A9F0655 /* RetroIDEView.swift in Sources */,
@@ -690,6 +709,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		5DACDD412BD0EBA04FC7ADF7 /* QBEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = QBEngine;
+		};
+		ACE075B8801243F8EB9BF659 /* QBEngine */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = QBEngine;
 		};

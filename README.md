@@ -16,8 +16,8 @@ being an emulator or a Microsoft product.
 - A keyboard-friendly retro IDE with DOS-style menus.
 - A built-in BASIC interpreter written in Swift.
 - Immediate mode for trying small expressions and statements quickly.
-- A learning guide with starter lessons.
-- A sample program library with 20 built-in programs.
+- A learning guide with 16 step-by-step chapters covering the full language.
+- A sample program library with 80 built-in programs.
 - Text output plus simple graphics output inspired by classic `SCREEN 13`.
 - Unit and UI test targets for the app and interpreter.
 
@@ -118,7 +118,7 @@ sample programs, and rendering text/graphics output.
 - More QuickBASIC-compatible statements and functions.
 - Richer graphics commands and palette behavior.
 - Interactive `INPUT` handling.
-- More lessons focused on programming fundamentals.
+- Additional sample programs and advanced language features.
 - Better diagnostics with source locations and fix suggestions.
 
 ## License

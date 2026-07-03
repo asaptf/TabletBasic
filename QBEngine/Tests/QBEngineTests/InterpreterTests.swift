@@ -42,7 +42,30 @@ final class InterpreterTests: XCTestCase {
 
         XCTAssertEqual(interpreter.screen.width, 320)
         XCTAssertEqual(interpreter.screen.height, 200)
+        XCTAssertTrue(interpreter.screen.isGraphicsMode)
         XCTAssertNil(interpreter.lastError)
+    }
+
+    func testScreenResetsBetweenProgramRuns() async {
+        let interpreter = QBInterpreter()
+        let output = ConsoleOutputHandler()
+        interpreter.output = output
+
+        await interpreter.run("""
+        SCREEN 13
+        PSET (10, 10), 4
+        """)
+        XCTAssertTrue(interpreter.screen.isGraphicsMode)
+
+        interpreter.screen.reset()
+
+        await interpreter.run("""
+        PRINT "Hello, World!"
+        """)
+        XCTAssertFalse(interpreter.screen.isGraphicsMode)
+        XCTAssertEqual(interpreter.screen.width, 80)
+        XCTAssertEqual(interpreter.screen.height, 25)
+        XCTAssertTrue(output.buffer.contains("Hello, World!"))
     }
 
     func testIfThen() async {

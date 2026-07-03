@@ -23,6 +23,18 @@ struct AboutView: View {
             }
             .buttonStyle(.plain)
 
+            Text("Open source project.")
+                .font(QBTheme.dialogFont)
+
+            Button {
+                openURL(AppBranding.repositoryURL)
+            } label: {
+                Text(AppBranding.repositoryURL.absoluteString)
+                    .font(QBTheme.monoSmall)
+                    .underline()
+            }
+            .buttonStyle(.plain)
+
             Text("BASIC interpreter and retro IDE for iPhone, iPad, and Mac.")
                 .font(QBTheme.dialogFont)
                 .multilineTextAlignment(.center)

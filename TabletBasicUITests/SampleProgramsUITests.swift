@@ -1,4 +1,5 @@
 import XCTest
+import QBEngine
 
 /// UI smoke tests: every bundled sample program runs in the app without errors.
 @MainActor
@@ -10,28 +11,9 @@ final class SampleProgramsUITests: XCTestCase {
         let outputContains: String
     }
 
-    private static let allPrograms: [SampleExpectation] = [
-        SampleExpectation(filename: "HELLO.BAS", outputContains: "Hello, World!"),
-        SampleExpectation(filename: "VARS.BAS", outputContains: "TabletBasic"),
-        SampleExpectation(filename: "MATH.BAS", outputContains: "256"),
-        SampleExpectation(filename: "COMPARE.BAS", outputContains: "Grade: B"),
-        SampleExpectation(filename: "FORLOOP.BAS", outputContains: "Done!"),
-        SampleExpectation(filename: "WHILE.BAS", outputContains: "128"),
-        SampleExpectation(filename: "NESTED.BAS", outputContains: "25"),
-        SampleExpectation(filename: "GOSUB.BAS", outputContains: "Main program ending"),
-        SampleExpectation(filename: "MENU.BAS", outputContains: "Option 3 selected"),
-        SampleExpectation(filename: "DATAREAD.BAS", outputContains: "Planet data:"),
-        SampleExpectation(filename: "ARRAY.BAS", outputContains: "Test scores:"),
-        SampleExpectation(filename: "DICE.BAS", outputContains: "Rolling dice"),
-        SampleExpectation(filename: "FIBON.BAS", outputContains: "Fibonacci"),
-        SampleExpectation(filename: "TABLES.BAS", outputContains: "----+"),
-        SampleExpectation(filename: "SHAPES.BAS", outputContains: "Shapes drawn!"),
-        SampleExpectation(filename: "BOXES.BAS", outputContains: "Nested boxes"),
-        SampleExpectation(filename: "STARS.BAS", outputContains: "Starfield complete"),
-        SampleExpectation(filename: "MOIRE.BAS", outputContains: "Moire pattern"),
-        SampleExpectation(filename: "SINEWAVE.BAS", outputContains: "Sine wave plotted"),
-        SampleExpectation(filename: "FLAG.BAS", outputContains: "Flag drawn!")
-    ]
+    private static let allPrograms: [SampleExpectation] = SampleProgramLibrary.all.map { program in
+        SampleExpectation(filename: program.filename, outputContains: program.smokeTestMarker)
+    }
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -39,7 +21,7 @@ final class SampleProgramsUITests: XCTestCase {
         app.launchArguments = ["UI_TESTING"]
     }
 
-    func testLibraryListsAllTwentySamplePrograms() throws {
+    func testLibraryListsAllSamplePrograms() throws {
         launchApp(sample: nil)
         try openSampleLibrary()
 
@@ -84,38 +66,7 @@ final class SampleProgramsUITests: XCTestCase {
         }
     }
 
-    // Individual tests for precise failure reporting in Xcode / CI.
-    func testHELLO_BAS() throws { try runSingle("HELLO.BAS", expect: "Hello, World!") }
-    func testVARS_BAS() throws { try runSingle("VARS.BAS", expect: "TabletBasic") }
-    func testMATH_BAS() throws { try runSingle("MATH.BAS", expect: "256") }
-    func testCOMPARE_BAS() throws { try runSingle("COMPARE.BAS", expect: "Grade: B") }
-    func testFORLOOP_BAS() throws { try runSingle("FORLOOP.BAS", expect: "Done!") }
-    func testWHILE_BAS() throws { try runSingle("WHILE.BAS", expect: "128") }
-    func testNESTED_BAS() throws { try runSingle("NESTED.BAS", expect: "25") }
-    func testGOSUB_BAS() throws { try runSingle("GOSUB.BAS", expect: "Main program ending") }
-    func testMENU_BAS() throws { try runSingle("MENU.BAS", expect: "Option 3 selected") }
-    func testDATAREAD_BAS() throws { try runSingle("DATAREAD.BAS", expect: "Planet data:") }
-
-    /// Backward-compatible alias for older CI commands and scripts.
-    func testLoadAndRunDATAREAD_BAS() throws { try runSingle("DATAREAD.BAS", expect: "Planet data:") }
-    func testARRAY_BAS() throws { try runSingle("ARRAY.BAS", expect: "Test scores:") }
-    func testDICE_BAS() throws { try runSingle("DICE.BAS", expect: "Rolling dice") }
-    func testFIBON_BAS() throws { try runSingle("FIBON.BAS", expect: "Fibonacci") }
-    func testTABLES_BAS() throws { try runSingle("TABLES.BAS", expect: "----+") }
-    func testSHAPES_BAS() throws { try runSingle("SHAPES.BAS", expect: "Shapes drawn!") }
-    func testBOXES_BAS() throws { try runSingle("BOXES.BAS", expect: "Nested boxes") }
-    func testSTARS_BAS() throws { try runSingle("STARS.BAS", expect: "Starfield complete") }
-    func testMOIRE_BAS() throws { try runSingle("MOIRE.BAS", expect: "Moire pattern") }
-    func testSINEWAVE_BAS() throws { try runSingle("SINEWAVE.BAS", expect: "Sine wave plotted") }
-    func testFLAG_BAS() throws { try runSingle("FLAG.BAS", expect: "Flag drawn!") }
-
     // MARK: - Helpers
-
-    private func runSingle(_ filename: String, expect expected: String) throws {
-        launchApp(sample: filename)
-        try runFromRunMenu()
-        assertOutput(filename, contains: expected)
-    }
 
     private func launchApp(sample filename: String?) {
         if let filename {

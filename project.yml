@@ -85,6 +85,7 @@ targets:
       - TabletBasicUITests
     dependencies:
       - target: TabletBasic
+      - package: QBEngine
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

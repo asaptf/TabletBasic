@@ -27,7 +27,7 @@ final class IDEViewModel: ObservableObject {
     private var documentBookmark: Data?
 
     var screen: ScreenBuffer { interpreter.screen }
-    var hasGraphicsOutput: Bool { screen.width > 0 && screen.height > 0 }
+    var hasGraphicsOutput: Bool { screen.isGraphicsMode }
 
     init() {
         interpreter.output = consoleOutput
@@ -56,6 +56,8 @@ final class IDEViewModel: ObservableObject {
         showWelcome = false
         outputText = ""
         consoleOutput.clear()
+        interpreter.screen.reset()
+        screenRevision += 1
 
         Task {
             await interpreter.run(preparedSource)
@@ -195,7 +197,7 @@ final class IDEViewModel: ObservableObject {
     func clearOutput() {
         outputText = ""
         consoleOutput.clear()
-        interpreter.screen.cls()
+        interpreter.screen.reset()
         screenRevision += 1
         showRunOutput = false
     }

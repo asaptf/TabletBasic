@@ -56,6 +56,27 @@ public final class ScreenBuffer: @unchecked Sendable {
         textCells = Array(repeating: " ", count: 80 * 25)
     }
 
+    /// Restores the default text mode and clears all pixels (e.g. before running a new program).
+    public func reset() {
+        mode = .text(columns: 80, rows: 25)
+        width = 80
+        height = 25
+        textCols = 80
+        textRows = 25
+        foreground = 15
+        background = 0
+        cls()
+    }
+
+    public var isGraphicsMode: Bool {
+        switch mode {
+        case .text:
+            return false
+        case .medium, .high, .vga256:
+            return true
+        }
+    }
+
     public func setScreen(modeValue: Int, colorSwitch: Int = 0, ap: Int = 0) {
         _ = colorSwitch
         _ = ap
