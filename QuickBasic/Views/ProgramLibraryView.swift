@@ -167,7 +167,7 @@ private struct ProgramDetailPane: View {
     }
 }
 
-private struct SampleActionButton: View {
+struct SampleActionButton: View {
     enum Style {
         case primary, accent, secondary
     }

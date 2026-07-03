@@ -89,26 +89,31 @@ struct LessonDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Chapter \(lesson.chapter)")
+                        .font(QBTheme.monoTitle)
+                        .foregroundStyle(QBTheme.editorBackground)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(QBTheme.menuText.opacity(0.92))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     Text(lesson.title)
-                        .font(.largeTitle.bold())
+                        .font(.headline)
                     Text(lesson.subtitle)
-                        .font(.title3)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
                 Text(lesson.description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
                 if !lesson.relatedSamples.isEmpty {
                     relatedSamplesSection
                 }
 
-                Text(lesson.starterCode)
-                    .font(QBTheme.monoFont)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.systemGray6))
+                BasicCodePreview(code: lesson.starterCode)
 
                 actionButtons
 
@@ -118,7 +123,7 @@ struct LessonDetailView: View {
                     }
                 }
             }
-            .padding(LayoutMetrics.isCompact(horizontalSizeClass) ? 16 : 24)
+            .padding(LayoutMetrics.isCompact(horizontalSizeClass) ? 16 : 20)
         }
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -147,33 +152,21 @@ struct LessonDetailView: View {
         }
     }
 
-    @ViewBuilder
     private var actionButtons: some View {
-        let buttons = Group {
-            Button("Open in Editor") {
+        HStack(spacing: 10) {
+            SampleActionButton(title: "Open in Editor", icon: "doc.text", style: .primary) {
                 viewModel.loadLesson(lesson)
                 onClose?()
             }
-            .buttonStyle(.borderedProminent)
 
-            Button("Run Lesson") {
+            SampleActionButton(title: "Run Lesson", icon: "play.fill", style: .accent) {
                 viewModel.loadLesson(lesson)
                 onClose?()
                 viewModel.runProgram()
             }
-            .buttonStyle(.bordered)
 
-            Button("Hints") { showHints.toggle() }
-                .buttonStyle(.bordered)
-        }
-
-        if LayoutMetrics.isCompact(horizontalSizeClass) {
-            VStack(spacing: 10) {
-                buttons
-            }
-        } else {
-            HStack(spacing: 12) {
-                buttons
+            SampleActionButton(title: "Hints", icon: "lightbulb", style: .secondary) {
+                showHints.toggle()
             }
         }
     }
