@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">TabletBasic app icon</title>
+  <desc id="desc">A retro BASIC terminal glowing on a tablet, with a pixel TB monogram.</desc>
+  <defs>
+    <linearGradient id="bg" x1="128" y1="80" x2="900" y2="940" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12214a"/>
+      <stop offset="0.45" stop-color="#0a2730"/>
+      <stop offset="1" stop-color="#071018"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="512" cy="458" r="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#56f5c8" stop-opacity="0.42"/>
+      <stop offset="0.54" stop-color="#11a8cc" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#071018" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tablet" x1="196" y1="180" x2="828" y2="840" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#273449"/>
+      <stop offset="0.55" stop-color="#111827"/>
+      <stop offset="1" stop-color="#080c14"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="232" y1="236" x2="792" y2="660" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0c3d36"/>
+      <stop offset="0.48" stop-color="#06221f"/>
+      <stop offset="1" stop-color="#031116"/>
+    </linearGradient>
+    <linearGradient id="key" x1="236" y1="720" x2="788" y2="824" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#223149"/>
+      <stop offset="1" stop-color="#121928"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+    <filter id="screenGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#58ffd2" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#halo)"/>
+
+  <g opacity="0.12">
+    <path d="M96 224H928M96 320H928M96 416H928M96 512H928M96 608H928M96 704H928M96 800H928" stroke="#7fffe0" stroke-width="2"/>
+    <path d="M160 96V928M256 96V928M352 96V928M448 96V928M544 96V928M640 96V928M736 96V928M832 96V928" stroke="#7fffe0" stroke-width="2"/>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <rect x="150" y="164" width="724" height="694" rx="86" fill="url(#tablet)"/>
+    <rect x="172" y="186" width="680" height="650" rx="68" fill="none" stroke="#4b6683" stroke-width="10" opacity="0.75"/>
+    <circle cx="512" cy="212" r="10" fill="#0a111d" stroke="#526b86" stroke-width="4"/>
+
+    <g filter="url(#screenGlow)">
+      <rect x="218" y="246" width="588" height="420" rx="34" fill="url(#screen)"/>
+      <rect x="234" y="262" width="556" height="388" rx="24" fill="none" stroke="#6cffd5" stroke-width="7"/>
+      <rect x="250" y="282" width="524" height="348" rx="12" fill="#021216" opacity="0.42"/>
+    </g>
+
+    <g opacity="0.16">
+      <path d="M250 302H774M250 326H774M250 350H774M250 374H774M250 398H774M250 422H774M250 446H774M250 470H774M250 494H774M250 518H774M250 542H774M250 566H774M250 590H774M250 614H774" stroke="#aaffea" stroke-width="3"/>
+    </g>
+
+    <g fill="#6cffd5">
+      <rect x="300" y="324" width="136" height="32" rx="6"/>
+      <rect x="348" y="356" width="40" height="176" rx="6"/>
+
+      <rect x="468" y="324" width="42" height="208" rx="6"/>
+      <rect x="510" y="324" width="116" height="32" rx="6"/>
+      <rect x="626" y="356" width="38" height="54" rx="6"/>
+      <rect x="510" y="410" width="116" height="32" rx="6"/>
+      <rect x="626" y="442" width="38" height="58" rx="6"/>
+      <rect x="510" y="500" width="116" height="32" rx="6"/>
+    </g>
+
+    <g fill="#f6ffb8" opacity="0.94">
+      <rect x="300" y="564" width="30" height="20" rx="4"/>
+      <rect x="342" y="564" width="92" height="20" rx="4"/>
+      <rect x="456" y="564" width="152" height="20" rx="4"/>
+      <rect x="630" y="564" width="78" height="20" rx="4"/>
+      <rect x="300" y="600" width="30" height="20" rx="4"/>
+      <rect x="342" y="600" width="116" height="20" rx="4"/>
+      <rect x="480" y="600" width="70" height="20" rx="4"/>
+    </g>
+
+    <rect x="696" y="598" width="34" height="28" rx="4" fill="#ffcf66"/>
+
+    <rect x="236" y="714" width="552" height="110" rx="28" fill="url(#key)" stroke="#435a77" stroke-width="6"/>
+    <g fill="#31425d">
+      <rect x="286" y="746" width="52" height="18" rx="6"/>
+      <rect x="360" y="746" width="52" height="18" rx="6"/>
+      <rect x="434" y="746" width="52" height="18" rx="6"/>
+      <rect x="508" y="746" width="52" height="18" rx="6"/>
+      <rect x="582" y="746" width="52" height="18" rx="6"/>
+      <rect x="656" y="746" width="52" height="18" rx="6"/>
+      <rect x="318" y="786" width="388" height="18" rx="6"/>
+    </g>
+    <circle cx="512" cy="878" r="28" fill="#111827" stroke="#536a85" stroke-width="6"/>
+  </g>
+
+  <path d="M270 858C214 820 178 756 172 690" stroke="#6cffd5" stroke-width="10" stroke-linecap="round" opacity="0.26"/>
+  <path d="M754 166C812 202 850 268 856 338" stroke="#ffcf66" stroke-width="10" stroke-linecap="round" opacity="0.26"/>
+</svg>

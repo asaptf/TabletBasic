@@ -1,0 +1,13 @@
+app_identifier("com.tabletbasic.app")
+platform("ios")
+
+metadata_path("./fastlane/metadata")
+screenshots_path("./fastlane/screenshots")
+languages(["en-US"])
+
+overwrite_screenshots(true)
+skip_binary_upload(true)
+submit_for_review(false)
+force(false)
+
+precheck_default_rule_level(:warn)

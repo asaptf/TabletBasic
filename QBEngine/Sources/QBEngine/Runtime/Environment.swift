@@ -1,0 +1,179 @@
+import Foundation
+
+public final class Environment: @unchecked Sendable {
+    private var scalars: [String: QBValue] = [:]
+    private var arrays: [String: QBArray] = [:]
+    private var defaultTypes: [Character: QBType] = [:]
+    private var dataItems: [QBValue] = []
+    private var dataPointer: Int = 0
+    public var randomSeed: UInt64 = 1
+
+    public init() {
+        seedRandom()
+    }
+
+    public func defaultType(for name: String) -> QBType {
+        guard let first = name.uppercased().first else { return .variant }
+        return defaultTypes[first] ?? .variant
+    }
+
+    public func setDefaultType(_ type: QBType, from start: Character, to end: Character) {
+        let lower = min(start, end)
+        let upper = max(start, end)
+        for code in lower.asciiValue!...upper.asciiValue! {
+            let scalar = UnicodeScalar(code)
+            defaultTypes[Character(scalar)] = type
+        }
+    }
+
+    public func getVariable(_ name: String) throws -> QBValue {
+        let key = name.uppercased()
+        if let value = scalars[key] { return value }
+        let type = defaultType(for: key)
+        switch type {
+        case .integer: return .integer(0)
+        case .long: return .long(0)
+        case .single: return .single(0)
+        case .double: return .double(0)
+        case .string: return .string("")
+        case .variant: return .integer(0)
+        }
+    }
+
+    public func setVariable(_ name: String, value: QBValue, type: QBType) {
+        let key = name.uppercased()
+        scalars[key] = coerce(value, to: type)
+    }
+
+    public func getArray(_ name: String, indices: [Int]) throws -> QBValue {
+        let key = name.uppercased()
+        guard let array = arrays[key] else {
+            throw QBError.runtime("Array '\(key)' not dimensioned")
+        }
+        return try array.get(indices)
+    }
+
+    public func setArray(_ name: String, indices: [Int], value: QBValue, type: QBType) throws {
+        let key = name.uppercased()
+        guard let array = arrays[key] else {
+            throw QBError.runtime("Array '\(key)' not dimensioned")
+        }
+        try array.set(indices, value: coerce(value, to: type))
+    }
+
+    public func dimension(_ name: String, type: QBType, bounds: [Int]) throws {
+        let key = name.uppercased()
+        arrays[key] = try QBArray(type: type, bounds: bounds)
+    }
+
+    public func appendData(_ values: [QBValue]) {
+        dataItems.append(contentsOf: values)
+    }
+
+    public func readNext() throws -> QBValue {
+        guard dataPointer < dataItems.count else {
+            throw QBError.runtime("Out of DATA")
+        }
+        let value = dataItems[dataPointer]
+        dataPointer += 1
+        return value
+    }
+
+    public func restore(pointer: Int) {
+        dataPointer = max(0, min(pointer, dataItems.count))
+    }
+
+    public func restoreToLine(_ line: Int) {
+        dataPointer = max(0, min(line, dataItems.count))
+    }
+
+    public func seedRandom(_ seed: Int? = nil) {
+        if let seed {
+            randomSeed = UInt64(truncatingIfNeeded: seed)
+        } else {
+            randomSeed = UInt64(Date().timeIntervalSince1970 * 1000)
+        }
+    }
+
+    public func nextRandom() -> Double {
+        randomSeed = randomSeed &* 1_103_515_245 &+ 12_345
+        return Double(randomSeed % 32_768) / 32_768.0
+    }
+
+    private func coerce(_ value: QBValue, to type: QBType) -> QBValue {
+        switch type {
+        case .integer: return .integer(value.asInt)
+        case .long: return .long(value.asInt)
+        case .single: return .single(value.asDouble)
+        case .double: return .double(value.asDouble)
+        case .string: return .string(value.asString)
+        case .variant: return value
+        }
+    }
+}
+
+public final class QBArray: @unchecked Sendable {
+    private let type: QBType
+    private let lowerBounds: [Int]
+    private let upperBounds: [Int]
+    private var storage: [QBValue]
+
+    public init(type: QBType, bounds: [Int]) throws {
+        guard bounds.count % 2 == 0 else {
+            throw QBError.runtime("Invalid DIM bounds")
+        }
+        self.type = type
+        var lowers: [Int] = []
+        var uppers: [Int] = []
+        for i in stride(from: 0, to: bounds.count, by: 2) {
+            lowers.append(bounds[i])
+            uppers.append(bounds[i + 1])
+        }
+        self.lowerBounds = lowers
+        self.upperBounds = uppers
+        let count = zip(lowers, uppers).reduce(1) { partial, pair in
+            partial * (pair.1 - pair.0 + 1)
+        }
+        self.storage = Array(repeating: defaultValue(for: type), count: max(count, 0))
+    }
+
+    public func get(_ indices: [Int]) throws -> QBValue {
+        let offset = try computeOffset(indices)
+        return storage[offset]
+    }
+
+    public func set(_ indices: [Int], value: QBValue) throws {
+        let offset = try computeOffset(indices)
+        storage[offset] = value
+    }
+
+    private func computeOffset(_ indices: [Int]) throws -> Int {
+        guard indices.count == lowerBounds.count else {
+            throw QBError.runtime("Wrong number of dimensions")
+        }
+        var offset = 0
+        var multiplier = 1
+        for i in (0..<indices.count).reversed() {
+            let index = indices[i]
+            let lower = lowerBounds[i]
+            let upper = upperBounds[i]
+            guard index >= lower && index <= upper else {
+                throw QBError.runtime("Subscript out of range")
+            }
+            offset += (index - lower) * multiplier
+            multiplier *= (upper - lower + 1)
+        }
+        return offset
+    }
+}
+
+private func defaultValue(for type: QBType) -> QBValue {
+    switch type {
+    case .integer: return .integer(0)
+    case .long: return .long(0)
+    case .single: return .single(0)
+    case .double: return .double(0)
+    case .string: return .string("")
+    case .variant: return .integer(0)
+    }
+}

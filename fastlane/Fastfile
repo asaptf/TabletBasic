@@ -1,0 +1,47 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Regenerate local App Store screenshots and marketing assets"
+  lane :screenshots do
+    sh("python3 fastlane/scripts/generate_store_assets.py")
+  end
+
+  desc "Upload App Store metadata and screenshots only"
+  lane :upload_store_assets do
+    screenshots
+    deliver(
+      app_identifier: "com.tabletbasic.app",
+      metadata_path: "fastlane/metadata",
+      screenshots_path: "fastlane/screenshots",
+      skip_binary_upload: true,
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      force: false
+    )
+  end
+
+  desc "Build an App Store archive"
+  lane :build_release do
+    build_app(
+      project: "TabletBasic.xcodeproj",
+      scheme: "TabletBasic",
+      export_method: "app-store",
+      output_directory: "fastlane/build",
+      clean: true
+    )
+  end
+
+  desc "Build and upload binary, metadata, and screenshots without submitting for review"
+  lane :release do
+    screenshots
+    build_release
+    deliver(
+      app_identifier: "com.tabletbasic.app",
+      metadata_path: "fastlane/metadata",
+      screenshots_path: "fastlane/screenshots",
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      force: false
+    )
+  end
+end

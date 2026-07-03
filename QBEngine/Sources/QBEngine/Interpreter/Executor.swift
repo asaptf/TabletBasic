@@ -1,0 +1,523 @@
+import Foundation
+
+public final class Executor: @unchecked Sendable {
+    private let environment = Environment()
+    public let screen = ScreenBuffer()
+    public weak var output: QBOutputHandler?
+    public weak var input: QBInputHandler?
+
+    private var returnStack: [Int] = []
+    private var forStack: [ForFrame] = []
+    private var whileStack: [Int] = []
+    private var doStack: [DoFrame] = []
+
+    public init() {}
+
+    public func execute(program: ParsedProgram) async throws {
+        try preloadData(from: program)
+        var pc = 0
+        while pc < program.lines.count {
+            let line = program.lines[pc]
+            do {
+                let jump = try await executeLine(line, program: program, at: pc)
+                if let jump {
+                    if jump == -1 { return }
+                    if let nextPC = resolveJump(jump, in: program) {
+                        pc = nextPC
+                        continue
+                    }
+                    throw QBError.runtime("Line \(jump) not found")
+                }
+                pc += 1
+            } catch QBError.endProgram, QBError.stopProgram {
+                return
+            } catch QBError.breakLoop {
+                pc = try skipToNext(program: program, from: pc, keyword: .next)
+            } catch QBError.breakDo {
+                pc = try skipToNext(program: program, from: pc, keyword: .loop)
+            } catch QBError.breakWhile {
+                pc = try skipToNext(program: program, from: pc, keyword: .wend)
+            }
+        }
+    }
+
+    private func executeLine(_ line: ProgramLine, program: ParsedProgram, at pc: Int) async throws -> Int? {
+        for statement in line.statements {
+            if let jump = try await executeStatement(statement, program: program, at: pc) {
+                return jump
+            }
+        }
+        return nil
+    }
+
+    private func executeStatement(_ statement: Statement, program: ParsedProgram, at pc: Int) async throws -> Int? {
+        switch statement {
+        case .rem:
+            return nil
+        case .print(let items):
+            try await executePrint(items)
+        case .input(let prompts, let vars):
+            try await executeInput(prompts: prompts, variables: vars)
+        case .letStmt(let target, let value), .assign(let target, let value):
+            try assign(target, value: try evaluate(value))
+        case .ifStmt(let condition, let thenBranch, let elseBranch):
+            if try evaluate(condition).asBool {
+                return try await executeBlock(thenBranch, program: program, at: pc)
+            } else if let elseBranch {
+                return try await executeBlock(elseBranch, program: program, at: pc)
+            }
+        case .forLoop(let name, let type, let start, let end, let step, _):
+            let startVal = try evaluate(start).asDouble
+            let endVal = try evaluate(end).asDouble
+            let stepVal = try step.map { try evaluate($0).asDouble } ?? 1
+            environment.setVariable(name, value: QBValue.from(startVal, type: type), type: type)
+            forStack.append(ForFrame(name: name, type: type, end: endVal, step: stepVal, linePC: pc))
+        case .next(let name):
+            guard var frame = forStack.popLast() else {
+                throw QBError.runtime("NEXT without FOR")
+            }
+            if let name, name != frame.name {
+                forStack.append(frame)
+                throw QBError.runtime("NEXT variable mismatch")
+            }
+            let current = try environment.getVariable(frame.name).asDouble
+            let next = current + frame.step
+            let shouldContinue = frame.step > 0 ? next <= frame.end : next >= frame.end
+            if shouldContinue {
+                environment.setVariable(frame.name, value: QBValue.from(next, type: frame.type), type: frame.type)
+                forStack.append(frame)
+                let nextPC = frame.linePC + 1
+                if nextPC < program.lines.count {
+                    return program.lines[nextPC].lineNumber ?? nextPC
+                }
+            }
+        case .whileLoop(let condition, _):
+            if try evaluate(condition).asBool {
+                whileStack.append(pc)
+            } else {
+                return try skipWhileEnd(program: program, from: pc)
+            }
+        case .wend:
+            guard let startPC = whileStack.popLast() else {
+                throw QBError.runtime("WEND without WHILE")
+            }
+            let startLine = program.lines[startPC]
+            if case .whileLoop(let condition, _) = startLine.statements.first {
+                if try evaluate(condition).asBool {
+                    whileStack.append(startPC)
+                    return startLine.lineNumber ?? startPC
+                }
+            }
+        case .doLoop(let mode, _, _):
+            doStack.append(DoFrame(mode: mode, linePC: pc))
+            if case .until(let expr) = mode {
+                if try evaluate(expr).asBool {
+                    return try skipToNext(program: program, from: pc, keyword: .loop)
+                }
+            }
+            if case .while(let expr) = mode {
+                let whileReady = try evaluate(expr).asBool
+                if !whileReady {
+                    return try skipToNext(program: program, from: pc, keyword: .loop)
+                }
+            }
+        case .loop:
+            guard let frame = doStack.popLast() else {
+                throw QBError.runtime("LOOP without DO")
+            }
+            let startLine = program.lines[frame.linePC]
+            if case .doLoop(let mode, _, _) = startLine.statements.first {
+                switch mode {
+                case .top:
+                    doStack.append(frame)
+                    return startLine.lineNumber ?? frame.linePC
+                case .bottom:
+                    doStack.append(frame)
+                    return startLine.lineNumber ?? frame.linePC
+                case .until(let expr):
+                    let untilDone = try evaluate(expr).asBool
+                    if !untilDone {
+                        doStack.append(frame)
+                        return startLine.lineNumber ?? frame.linePC
+                    }
+                case .while(let expr):
+                    let whileActive = try evaluate(expr).asBool
+                    if whileActive {
+                        doStack.append(frame)
+                        return startLine.lineNumber ?? frame.linePC
+                    }
+                }
+            }
+        case .exitFor:
+            throw QBError.breakLoop
+        case .exitDo:
+            _ = doStack.popLast()
+            throw QBError.breakDo
+        case .exitWhile:
+            _ = whileStack.popLast()
+            throw QBError.breakWhile
+        case .goto(let line):
+            return line
+        case .gosub(let line):
+            returnStack.append(pc + 1)
+            return line
+        case .return:
+            guard let returnPC = returnStack.popLast() else {
+                throw QBError.runtime("RETURN without GOSUB")
+            }
+            if returnPC < program.lines.count {
+                return program.lines[returnPC].lineNumber ?? returnPC
+            }
+        case .end:
+            throw QBError.endProgram
+        case .stop:
+            throw QBError.stopProgram
+        case .dim(let name, let type, let bounds):
+            var parsedBounds: [Int] = []
+            for i in stride(from: 0, to: bounds.count, by: 1) {
+                if i % 2 == 0 && i + 1 < bounds.count {
+                    let lower = try evaluate(bounds[i]).asInt
+                    let upper = try evaluate(bounds[i + 1]).asInt
+                    parsedBounds.append(lower)
+                    parsedBounds.append(upper)
+                } else if bounds.count == 1 {
+                    let upper = try evaluate(bounds[0]).asInt
+                    parsedBounds = [1, upper]
+                }
+            }
+            if parsedBounds.count == 1 {
+                parsedBounds = [1, parsedBounds[0]]
+            }
+            try environment.dimension(name, type: type, bounds: parsedBounds)
+        case .defType(let type, let start, let end):
+            let startChar = Character(start)
+            let endChar = Character(end ?? start)
+            environment.setDefaultType(type, from: startChar, to: endChar)
+        case .data:
+            return nil
+        case .read(let vars):
+            for variable in vars {
+                let value = try environment.readNext()
+                try assign(variable, value: value)
+            }
+        case .restore(let line):
+            if let line {
+                environment.restoreToLine(try evaluate(line).asInt)
+            } else {
+                environment.restore(pointer: 0)
+            }
+        case .onGoto(let expr, let lines):
+            let index = try evaluate(expr).asInt
+            if index >= 1 && index <= lines.count {
+                return lines[index - 1]
+            }
+        case .onGosub(let expr, let lines):
+            let index = try evaluate(expr).asInt
+            if index >= 1 && index <= lines.count {
+                returnStack.append(pc + 1)
+                return lines[index - 1]
+            }
+        case .randomize(let seed):
+            if let seed {
+                environment.seedRandom(try evaluate(seed).asInt)
+            } else {
+                environment.seedRandom()
+            }
+        case .cls:
+            screen.cls()
+        case .screen(let mode, let color, let ap):
+            let modeVal = try evaluate(mode).asInt
+            let colorVal = try color.map { try evaluate($0).asInt } ?? 0
+            let apVal = try ap.map { try evaluate($0).asInt } ?? 0
+            screen.setScreen(modeValue: modeVal, colorSwitch: colorVal, ap: apVal)
+        case .color(let fg, let bg, _):
+            let fgVal = try evaluate(fg).asInt
+            let bgVal = try bg.map { try evaluate($0).asInt }
+            screen.setColor(foreground: fgVal, background: bgVal)
+        case .pset(let x, let y, let color):
+            let px = try evaluate(x).asInt
+            let py = try evaluate(y).asInt
+            let c = try color.map { try evaluate($0).asInt } ?? screen.foreground
+            screen.pset(x: px, y: py, colorIndex: c)
+        case .preset(let x, let y, let color):
+            let px = try evaluate(x).asInt
+            let py = try evaluate(y).asInt
+            let c = try color.map { try evaluate($0).asInt } ?? screen.background
+            screen.preset(x: px, y: py, colorIndex: c)
+        case .line(let x1, let y1, let x2, let y2, let color, let boxed):
+            let fx = try evaluate(x1).asInt
+            let fy = try evaluate(y1).asInt
+            let c = try color.map { try evaluate($0).asInt } ?? screen.foreground
+            if let x2, let y2 {
+                let tx = try evaluate(x2).asInt
+                let ty = try evaluate(y2).asInt
+                screen.drawLine(x1: fx, y1: fy, x2: tx, y2: ty, colorIndex: c, boxed: boxed)
+            }
+        case .circle(let x, let y, let radius, let color, _, _):
+            let cx = try evaluate(x).asInt
+            let cy = try evaluate(y).asInt
+            let r = try evaluate(radius).asInt
+            let c = try color.map { try evaluate($0).asInt } ?? screen.foreground
+            screen.drawCircle(cx: cx, cy: cy, radius: r, colorIndex: c)
+        case .beep:
+            output?.beep()
+        case .sleep(let duration):
+            let seconds = try evaluate(duration).asDouble
+            try await Task.sleep(nanoseconds: UInt64(max(0, seconds) * 1_000_000_000))
+        }
+        return nil
+    }
+
+    private func executeBlock(_ statements: [Statement], program: ParsedProgram, at pc: Int) async throws -> Int? {
+        for statement in statements {
+            if let jump = try await executeStatement(statement, program: program, at: pc) {
+                return jump
+            }
+        }
+        return nil
+    }
+
+    private func executePrint(_ items: [PrintItem]) async throws {
+        var line = ""
+        var needNewColumn = false
+        var currentCol = screen.cursorCol
+
+        for item in items {
+            switch item {
+            case .expression(let expr):
+                line += formatPrintValue(try evaluate(expr))
+                needNewColumn = false
+            case .separator(.semicolon):
+                needNewColumn = true
+            case .separator(.comma):
+                let zone = 14 - ((currentCol - 1) % 14)
+                line += String(repeating: " ", count: max(1, zone))
+                currentCol += zone
+                needNewColumn = true
+            case .tab:
+                let zone = 14 - ((currentCol - 1) % 14)
+                line += String(repeating: " ", count: max(1, zone))
+                currentCol += zone
+            case .spc(let count):
+                line += String(repeating: " ", count: max(0, count))
+                currentCol += count
+            }
+            currentCol = screen.cursorCol + line.count
+        }
+
+        let advanceLine = !needNewColumn && !items.isEmpty
+        output?.write(line)
+        screen.writeText(line + (advanceLine ? "\n" : ""), advanceLine: advanceLine)
+        if advanceLine {
+            output?.write("\n")
+        }
+    }
+
+    private func executeInput(prompts: [String], variables: [Expr]?) async throws {
+        for prompt in prompts {
+            output?.write(prompt)
+        }
+        guard let variables else { return }
+        for variable in variables {
+            let response = try await input?.prompt(prompts.last ?? "? ") ?? ""
+            try assign(variable, value: .string(response))
+        }
+    }
+
+    private func assign(_ target: Expr, value: QBValue) throws {
+        switch target {
+        case .variable(let name, let type):
+            environment.setVariable(name, value: value, type: type)
+        case .function("INDEX", let args):
+            guard args.count == 2,
+                  case .variable(let name, let type) = args[0] else {
+                throw QBError.runtime("Invalid assignment target")
+            }
+            let index = try evaluate(args[1]).asInt
+            try environment.setArray(name, indices: [index], value: value, type: type)
+        default:
+            throw QBError.runtime("Invalid assignment target")
+        }
+    }
+
+    public func evaluate(_ expr: Expr) throws -> QBValue {
+        switch expr {
+        case .integer(let v): return .integer(v)
+        case .float(let v): return .single(v)
+        case .string(let v): return .string(v)
+        case .variable(let name, _):
+            return try environment.getVariable(name)
+        case .unary(let op, let rhs):
+            let value = try evaluate(rhs)
+            switch op {
+            case .neg: return QBValue.from(-value.asDouble, type: .variant)
+            case .not: return .bool(!value.asBool)
+            }
+        case .binary(let op, let lhs, let rhs):
+            return try evaluateBinary(op, lhs: lhs, rhs: rhs)
+        case .function(let name, let args):
+            return try evaluateFunction(name, args: args)
+        }
+    }
+
+    private func evaluateBinary(_ op: BinaryOp, lhs: Expr, rhs: Expr) throws -> QBValue {
+        if op == .and || op == .or || op == .xor || op == .eqv || op == .imp {
+            let left = try evaluate(lhs).asBool
+            let right = try evaluate(rhs).asBool
+            switch op {
+            case .and: return .bool(left && right)
+            case .or: return .bool(left || right)
+            case .xor: return .bool(left != right)
+            case .eqv: return .bool(left == right)
+            case .imp: return .bool(!left || right)
+            default: break
+            }
+        }
+
+        let left = try evaluate(lhs)
+        let right = try evaluate(rhs)
+
+        if case .string = left, case .string = right, op == .add {
+            return .string(left.asString + right.asString)
+        }
+
+        let l = left.asDouble
+        let r = right.asDouble
+        switch op {
+        case .add: return QBValue.from(l + r, type: .variant)
+        case .sub: return QBValue.from(l - r, type: .variant)
+        case .mul: return QBValue.from(l * r, type: .variant)
+        case .div: return QBValue.from(l / r, type: .variant)
+        case .intDiv: return .integer(Int(l) / Int(r))
+        case .pow: return QBValue.from(pow(l, r), type: .variant)
+        case .mod: return .integer(Int(l) % Int(r))
+        case .eq: return .bool(l == r)
+        case .ne: return .bool(l != r)
+        case .lt: return .bool(l < r)
+        case .le: return .bool(l <= r)
+        case .gt: return .bool(l > r)
+        case .ge: return .bool(l >= r)
+        default: return .integer(0)
+        }
+    }
+
+    private func evaluateFunction(_ name: String, args: [Expr]) throws -> QBValue {
+        let upper = name.uppercased()
+        if upper == "INDEX", args.count == 2,
+           case .variable(let arrayName, let type) = args[0] {
+            let index = try evaluate(args[1]).asInt
+            return try environment.getArray(arrayName, indices: [index])
+        }
+
+        let evaluated = try args.map { try evaluate($0) }
+        switch upper {
+        case "ABS": return QBValue.from(abs(evaluated[0].asDouble), type: .variant)
+        case "INT": return .integer(evaluated[0].asInt)
+        case "SGN":
+            let v = evaluated[0].asDouble
+            return .integer(v > 0 ? 1 : (v < 0 ? -1 : 0))
+        case "SQR": return QBValue.from(sqrt(evaluated[0].asDouble), type: .variant)
+        case "SIN": return QBValue.from(sin(evaluated[0].asDouble), type: .variant)
+        case "COS": return QBValue.from(cos(evaluated[0].asDouble), type: .variant)
+        case "TAN": return QBValue.from(tan(evaluated[0].asDouble), type: .variant)
+        case "RND":
+            if evaluated.isEmpty {
+                return .single(environment.nextRandom())
+            }
+            return .single(environment.nextRandom())
+        case "CHR$": return .string(String(Character(UnicodeScalar(evaluated[0].asInt % 256)!)))
+        case "STR$": return .string(evaluated[0].asString)
+        case "VAL": return QBValue.from(Double(evaluated[0].asString) ?? 0, type: .variant)
+        case "LEN": return .integer(evaluated[0].asString.count)
+        case "LEFT$":
+            let s = evaluated[0].asString
+            let n = max(0, evaluated[1].asInt)
+            return .string(String(s.prefix(n)))
+        case "RIGHT$":
+            let s = evaluated[0].asString
+            let n = max(0, evaluated[1].asInt)
+            return .string(String(s.suffix(n)))
+        default:
+            throw QBError.runtime("Unknown function \(upper)")
+        }
+    }
+
+    private func formatPrintValue(_ value: QBValue) -> String {
+        switch value {
+        case .single(let v):
+            return v.rounded() == Double(Float(v)) ? String(Int(v)) : String(v)
+        case .double(let v):
+            return String(v)
+        default:
+            return value.asString
+        }
+    }
+
+    private func skipWhileEnd(program: ParsedProgram, from pc: Int) throws -> Int? {
+        var depth = 1
+        var index = pc + 1
+        while index < program.lines.count {
+            for statement in program.lines[index].statements {
+                if case .whileLoop = statement { depth += 1 }
+                if case .wend = statement {
+                    depth -= 1
+                    if depth == 0 {
+                        return index
+                    }
+                }
+            }
+            index += 1
+        }
+        throw QBError.runtime("WEND not found")
+    }
+
+    private func preloadData(from program: ParsedProgram) throws {
+        for line in program.lines {
+            for statement in line.statements {
+                if case .data(let values) = statement {
+                    let resolved = try values.map { try evaluate($0) }
+                    environment.appendData(resolved)
+                }
+            }
+        }
+    }
+
+    private func resolveJump(_ target: Int, in program: ParsedProgram) -> Int? {
+        if let linePC = program.lineIndex[target] {
+            return linePC
+        }
+        if target >= 0 && target < program.lines.count {
+            return target
+        }
+        return nil
+    }
+
+    private func skipToNext(program: ParsedProgram, from pc: Int, keyword: Keyword) throws -> Int {
+        var index = pc + 1
+        while index < program.lines.count {
+            for statement in program.lines[index].statements {
+                switch (keyword, statement) {
+                case (.next, .next), (.loop, .loop), (.wend, .wend):
+                    return index
+                default:
+                    break
+                }
+            }
+            index += 1
+        }
+        throw QBError.runtime("\(keyword.rawValue.uppercased()) not found")
+    }
+}
+
+private struct ForFrame {
+    let name: String
+    let type: QBType
+    let end: Double
+    let step: Double
+    let linePC: Int
+}
+
+private struct DoFrame {
+    let mode: DoMode
+    let linePC: Int
+}

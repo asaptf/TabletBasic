@@ -1,0 +1,3 @@
+No login is required.
+
+TabletBasic runs locally and does not require a network connection for the core app experience. On launch, press Enter to open the learning guide or press Esc to dismiss the welcome dialog. Use File > Open Sample Program to load sample BASIC programs, or Run > Start to execute the current program.

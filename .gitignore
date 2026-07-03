@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode build output
+build/
+DerivedData/
+*.xcresult
+*.moved-aside
+
+# Xcode user-specific state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+.swiftpm/config/
+.swiftpm/xcode/xcuserdata/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace/
+
+# Editor and local environment files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+*.log
+
+# Fastlane output, if added later
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output/
