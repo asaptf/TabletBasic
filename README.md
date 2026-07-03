@@ -9,7 +9,7 @@ experimenting one small line at a time. QuickBASIC was an excellent teaching
 tool, and TabletBasic tries to bring that spirit to modern Apple devices without
 being an emulator or a Microsoft product.
 
-![TabletBasic running in the iPad simulator](simulator-launch.png)
+![TabletBasic welcome screen](simulator-launch.png)
 
 ## What It Includes
 

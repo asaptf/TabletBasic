@@ -5,6 +5,8 @@ enum LayoutMetrics {
         sizeClass == .compact
     }
 
+    static let editorLineHeight: CGFloat = 22
+
     static func lineNumberGutterWidth(compact: Bool) -> CGFloat {
         compact ? 36 : 48
     }

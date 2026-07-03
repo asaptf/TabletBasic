@@ -39,6 +39,20 @@ final class TabletBasicTests: XCTestCase {
         XCTAssertEqual(SampleProgramLibrary.all.count, 20)
     }
 
+    func testSourceCursorTracksSelection() {
+        let text = "ab\ncd"
+        assertCursor(SourceCursor.position(in: text, location: 0), line: 1, column: 1)
+        assertCursor(SourceCursor.position(in: text, location: 2), line: 1, column: 3)
+        assertCursor(SourceCursor.position(in: text, location: 3), line: 2, column: 1)
+        assertCursor(SourceCursor.position(in: text, location: 4), line: 2, column: 2)
+        assertCursor(SourceCursor.position(in: "", location: 0), line: 1, column: 1)
+    }
+
+    private func assertCursor(_ position: (line: Int, column: Int), line: Int, column: Int) {
+        XCTAssertEqual(position.line, line)
+        XCTAssertEqual(position.column, column)
+    }
+
     @MainActor
     func testOpenAndSaveBasicProgramFile() throws {
         let viewModel = IDEViewModel()
