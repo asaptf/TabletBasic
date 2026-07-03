@@ -117,13 +117,8 @@ private struct RunOutputView: View {
 
                 if hasGraphics {
                     GraphicsCanvasView(screen: viewModel.screen, revision: viewModel.screenRevision)
-                        .frame(
-                            maxHeight: LayoutMetrics.graphicsMaxHeight(
-                                compact: compactLayout,
-                                totalHeight: geometry.size.height,
-                                hasGraphics: true
-                            ) ?? .infinity
-                        )
+                        .layoutPriority(1)
+                        .padding(.horizontal, 8)
                 }
 
                 ScrollView {

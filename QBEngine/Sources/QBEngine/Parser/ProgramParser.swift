@@ -821,11 +821,11 @@ private struct LineParser {
         let x = try parseExpression()
         try consume(.comma, message: "Expected ','")
         let y = try parseExpression()
+        try consume(.rparen, message: "Expected ')' after coordinates")
         var color: Expr?
         if match(.comma) {
             color = try parseExpression()
         }
-        try consume(.rparen, message: "Expected ')'")
         return preset ? .preset(x, y, color) : .pset(x, y, color)
     }
 

@@ -30,6 +30,20 @@ final class InterpreterTests: XCTestCase {
         XCTAssertTrue(output.buffer.contains("3"))
     }
 
+    func testPsetUsesColorOutsideParentheses() async {
+        let interpreter = QBInterpreter()
+
+        await interpreter.run("""
+        SCREEN 13
+        CLS
+        PSET (10, 10), 4
+        """)
+
+        let pixel = interpreter.screen.pixels[10 * interpreter.screen.width + 10]
+        XCTAssertEqual(pixel, interpreter.screen.colorAt(index: 4))
+        XCTAssertNotEqual(pixel, interpreter.screen.colorAt(index: 15))
+    }
+
     func testGraphicsCircle() async throws {
         let interpreter = QBInterpreter()
         let output = ConsoleOutputHandler()
@@ -271,6 +285,43 @@ final class InterpreterTests: XCTestCase {
         XCTAssertNil(interpreter.lastError)
         XCTAssertTrue(output.buffer.contains("ok"))
         XCTAssertFalse(output.buffer.contains("bad"))
+    }
+
+    func testVGAPaletteUsesStandardEGAColors() async {
+        let interpreter = QBInterpreter()
+        await interpreter.run("SCREEN 13")
+
+        XCTAssertEqual(interpreter.screen.colorAt(index: 0), QBColor(red: 0, green: 0, blue: 0))
+        XCTAssertEqual(interpreter.screen.colorAt(index: 4), QBColor(red: 170, green: 0, blue: 0))
+        XCTAssertEqual(interpreter.screen.colorAt(index: 15), QBColor(red: 255, green: 255, blue: 255))
+    }
+
+    func testPrintDoesNotCorruptGraphicsPixels() async {
+        let interpreter = QBInterpreter()
+        let output = ConsoleOutputHandler()
+        interpreter.output = output
+
+        await interpreter.run("""
+        SCREEN 13
+        CLS
+        PSET (10, 10), 4
+        PSET (160, 100), 4
+        """)
+
+        let corner = interpreter.screen.pixels[10 * interpreter.screen.width + 10]
+        XCTAssertEqual(corner, interpreter.screen.colorAt(index: 4))
+
+        let index = 100 * interpreter.screen.width + 160
+        let beforePrint = interpreter.screen.pixels[index]
+        XCTAssertEqual(beforePrint, interpreter.screen.colorAt(index: 4))
+
+        await interpreter.run("""
+        PRINT "Hello"
+        """)
+
+        let afterPrint = interpreter.screen.pixels[index]
+        XCTAssertEqual(afterPrint, beforePrint)
+        XCTAssertTrue(output.buffer.contains("Hello"))
     }
 
     func testLineBoxedFillsRectangle() async {

@@ -51,6 +51,24 @@ public final class ScreenBuffer: @unchecked Sendable {
         QBColor(red: 255, green: 255, blue: 255)
     ]
 
+    /// Standard VGA mode 13h DAC palette (256 colors).
+    private static let vgaPalette: [QBColor] = {
+        var colors = palette
+        let levels: [UInt8] = [0, 51, 102, 153, 204, 255]
+        for red in levels {
+            for green in levels {
+                for blue in levels {
+                    colors.append(QBColor(red: red, green: green, blue: blue))
+                }
+            }
+        }
+        for level in 0..<24 {
+            let gray = UInt8(level * 10 + 8)
+            colors.append(QBColor(red: gray, green: gray, blue: gray))
+        }
+        return colors
+    }()
+
     public init() {
         pixels = Array(repeating: Self.palette[0], count: 80 * 25)
         textCells = Array(repeating: " ", count: 80 * 25)
@@ -144,7 +162,9 @@ public final class ScreenBuffer: @unchecked Sendable {
             if index >= 0 && index < textCells.count {
                 textCells[index] = char
             }
-            drawCharacter(char, row: cursorRow, col: cursorCol)
+            if !isGraphicsMode {
+                drawCharacter(char, row: cursorRow, col: cursorCol)
+            }
             cursorCol += 1
             if cursorCol > textCols {
                 cursorCol = 1
@@ -222,7 +242,8 @@ public final class ScreenBuffer: @unchecked Sendable {
 
     public func colorAt(index: Int) -> QBColor {
         if case .vga256 = mode {
-            return vgaColor(index)
+            let clamped = max(0, min(index, 255))
+            return Self.vgaPalette[clamped]
         }
         let clamped = max(0, min(index, 15))
         return Self.palette[clamped]
@@ -290,11 +311,4 @@ public final class ScreenBuffer: @unchecked Sendable {
         pset(x: cx - y, y: cy - x, colorIndex: color)
     }
 
-    private func vgaColor(_ index: Int) -> QBColor {
-        let hue = Double(index) / 256.0
-        let r = UInt8((sin(hue * 6.28) * 0.5 + 0.5) * 255)
-        let g = UInt8((sin(hue * 6.28 + 2.1) * 0.5 + 0.5) * 255)
-        let b = UInt8((sin(hue * 6.28 + 4.2) * 0.5 + 0.5) * 255)
-        return QBColor(red: r, green: g, blue: b)
-    }
 }

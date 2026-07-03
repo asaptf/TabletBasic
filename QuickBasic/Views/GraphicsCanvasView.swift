@@ -43,6 +43,8 @@ struct GraphicsCanvasView: View {
                 }
             }
         }
+        .aspectRatio(CGFloat(screen.width) / CGFloat(screen.height), contentMode: .fit)
+        .frame(maxWidth: .infinity)
         .background(Color.black)
         .overlay(
             RoundedRectangle(cornerRadius: 2)
