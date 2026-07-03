@@ -25,13 +25,18 @@ struct DOSMenuDefinition: Identifiable {
 struct DOSMenuBar: View {
     @ObservedObject var viewModel: IDEViewModel
     @Binding var isMenuOpen: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var openMenuTitle: String?
     @State private var highlightedIndex: Int = 0
     @State private var anchors: [Int: CGFloat] = [:]
 
-    private let menus: [DOSMenuDefinition] = [
+    private var menus: [DOSMenuDefinition] {
+        [
         DOSMenuDefinition(title: "File", items: [
             .init("New...", action: .newFile),
+            .init("Open...", action: .openFile),
+            .init("Save", action: .saveFile),
+            .init("Save As...", action: .saveAsFile),
             .init("Open Sample Program...", action: .openSamples),
             .separator,
             .init("Clear Output", action: .clear)
@@ -64,27 +69,34 @@ struct DOSMenuBar: View {
             .separator,
             .init("About \(AppBranding.name)...", action: .about)
         ])
-    ]
+        ]
+    }
+
+    private var compactLayout: Bool {
+        LayoutMetrics.isCompact(horizontalSizeClass)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                ForEach(Array(menus.enumerated()), id: \.element.id) { index, menu in
-                    menuBarButton(menu)
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: MenuAnchorKey.self,
-                                    value: [index: geo.frame(in: .named("menubar")).minX]
-                                )
-                            }
-                        )
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(Array(menus.enumerated()), id: \.element.id) { index, menu in
+                        menuBarButton(menu)
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear.preference(
+                                        key: MenuAnchorKey.self,
+                                        value: [index: geo.frame(in: .named("menubar")).minX]
+                                    )
+                                }
+                            )
+                    }
                 }
-                Spacer(minLength: 0)
+                .padding(.horizontal, 2)
             }
-            .padding(.horizontal, 2)
+            .scrollClipDisabled()
             .padding(.vertical, 2)
-            .frame(height: 28)
+            .frame(height: compactLayout ? 30 : 28)
             .background(QBTheme.menuBackground)
             .coordinateSpace(name: "menubar")
             .onPreferenceChange(MenuAnchorKey.self) { anchors = $0 }
@@ -98,10 +110,13 @@ struct DOSMenuBar: View {
             }
 
             Text(viewModel.documentName)
-                .font(QBTheme.monoMenu)
+                .font(compactLayout ? QBTheme.monoSmall : QBTheme.monoMenu)
                 .foregroundStyle(QBTheme.menuText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity)
-                .padding(.bottom, 4)
+                .padding(.horizontal, 8)
+                .padding(.bottom, compactLayout ? 6 : 4)
         }
         .background(QBTheme.menuBackground)
         .onChange(of: openMenuTitle) { _, newValue in
@@ -129,8 +144,8 @@ struct DOSMenuBar: View {
             Text(menu.title)
                 .font(QBTheme.monoMenu)
                 .foregroundStyle(isOpen ? QBTheme.menuBarActiveText : QBTheme.menuText)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
+                .padding(.horizontal, compactLayout ? 8 : 10)
+                .padding(.vertical, compactLayout ? 5 : 4)
                 .background(isOpen ? QBTheme.menuBarActiveBackground : Color.clear)
         }
         .buttonStyle(.plain)

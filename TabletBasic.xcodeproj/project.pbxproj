@@ -11,6 +11,7 @@
 		331EB29D9A7314F93EF4C720 /* TabletBasicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F8A1982424024A1C68AFE0 /* TabletBasicApp.swift */; };
 		4DA80E36EA7A81F441DAE4BC /* ProgramLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2BE87013C68659342DF5750 /* ProgramLibraryView.swift */; };
 		51ED1C311176717F3BC5B6FC /* QBEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5DACDD412BD0EBA04FC7ADF7 /* QBEngine */; };
+		53E380DFBC08F3CAECA8EAD4 /* LayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B6782F0230023A8A45B91B /* LayoutMetrics.swift */; };
 		716DA9668BE93E8AD64DD52D /* QBEngine in Frameworks */ = {isa = PBXBuildFile; productRef = E22716B21D031B60747A1CA0 /* QBEngine */; };
 		77DC9526E48D87CE11CE5419 /* Lesson.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54EA3B57ADB0DE250E4BC90 /* Lesson.swift */; };
 		7E8BC1EF1201951C303905A3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FDD4475D04E2AEFC15514A58 /* Assets.xcassets */; };
@@ -24,6 +25,7 @@
 		BD3A18F771329C3F7D78C60A /* KeyboardShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2DA76194C3BD20CB02D54A /* KeyboardShortcuts.swift */; };
 		BD81D58DA912B965F46DC109 /* QBTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC47CE3BBDDCA8FE6756CB94 /* QBTheme.swift */; };
 		C2F48242C7D686779A9F0655 /* RetroIDEView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59F2233BA019BB0A2A64363 /* RetroIDEView.swift */; };
+		CA0E11A0F782A814A6408582 /* BasicProgramDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A843057DAA47530278CB1AE /* BasicProgramDocument.swift */; };
 		D12316AB9509D61F7B2BFC91 /* CodeEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 894AFF9542B9D96F04BC8F78 /* CodeEditorView.swift */; };
 		DC8E37284D772EB68996F2CD /* WelcomeDialogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7DADA654443C8B5C3FBD018 /* WelcomeDialogView.swift */; };
 		E6EE8F7DCA6B836F1C1F5EBF /* SampleProgramsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 732FAF7E6BE1AF4445AE73D4 /* SampleProgramsUITests.swift */; };
@@ -54,6 +56,7 @@
 		22FD183A9C6A316A13A466BF /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		2302FB2F00EF5C3AFB5B6566 /* LearningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningView.swift; sourceTree = "<group>"; };
 		28E7379D64D295715FD5717F /* DOSMenuBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DOSMenuBar.swift; sourceTree = "<group>"; };
+		2A843057DAA47530278CB1AE /* BasicProgramDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicProgramDocument.swift; sourceTree = "<group>"; };
 		32B405CF4C720C8516C89974 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		33C716B73BDDE93A8753E0B9 /* ImmediateWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmediateWindowView.swift; sourceTree = "<group>"; };
 		33EABB06FDD42B6B0B804B5E /* QBEngine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = QBEngine; path = QBEngine; sourceTree = SOURCE_ROOT; };
@@ -61,6 +64,7 @@
 		5911551A37E5D85F4320FCE5 /* IDEViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IDEViewModel.swift; sourceTree = "<group>"; };
 		597774FB41C6BA6F01B38829 /* TabletBasicUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TabletBasicUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		732FAF7E6BE1AF4445AE73D4 /* SampleProgramsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleProgramsUITests.swift; sourceTree = "<group>"; };
+		74B6782F0230023A8A45B91B /* LayoutMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutMetrics.swift; sourceTree = "<group>"; };
 		7F490449B21B10E636CCF579 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 		86F8A1982424024A1C68AFE0 /* TabletBasicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletBasicApp.swift; sourceTree = "<group>"; };
 		894AFF9542B9D96F04BC8F78 /* CodeEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditorView.swift; sourceTree = "<group>"; };
@@ -151,6 +155,7 @@
 				EDC105CDFD79670002FDA15E /* HelpView.swift */,
 				33C716B73BDDE93A8753E0B9 /* ImmediateWindowView.swift */,
 				9C2DA76194C3BD20CB02D54A /* KeyboardShortcuts.swift */,
+				74B6782F0230023A8A45B91B /* LayoutMetrics.swift */,
 				2302FB2F00EF5C3AFB5B6566 /* LearningView.swift */,
 				B2BE87013C68659342DF5750 /* ProgramLibraryView.swift */,
 				DC47CE3BBDDCA8FE6756CB94 /* QBTheme.swift */,
@@ -184,6 +189,7 @@
 			isa = PBXGroup;
 			children = (
 				5085F0A68DFB3B21FF65DF9C /* AppBranding.swift */,
+				2A843057DAA47530278CB1AE /* BasicProgramDocument.swift */,
 				C54EA3B57ADB0DE250E4BC90 /* Lesson.swift */,
 			);
 			path = Models;
@@ -325,6 +331,7 @@
 			files = (
 				A93E602422750DA6A6966504 /* AboutView.swift in Sources */,
 				8FD1175DD609D77953C2D3D5 /* AppBranding.swift in Sources */,
+				CA0E11A0F782A814A6408582 /* BasicProgramDocument.swift in Sources */,
 				D12316AB9509D61F7B2BFC91 /* CodeEditorView.swift in Sources */,
 				F78E1137C1E24817014227CF /* DOSMenuBar.swift in Sources */,
 				0CDA3BBF9F7182825E99F1C9 /* GraphicsCanvasView.swift in Sources */,
@@ -332,6 +339,7 @@
 				A412B7325D6E81AA72665293 /* IDEViewModel.swift in Sources */,
 				FFE17CB2B689A772B65AB2C1 /* ImmediateWindowView.swift in Sources */,
 				BD3A18F771329C3F7D78C60A /* KeyboardShortcuts.swift in Sources */,
+				53E380DFBC08F3CAECA8EAD4 /* LayoutMetrics.swift in Sources */,
 				962E73D9E31D5C08E069D14C /* LearningView.swift in Sources */,
 				77DC9526E48D87CE11CE5419 /* Lesson.swift in Sources */,
 				4DA80E36EA7A81F441DAE4BC /* ProgramLibraryView.swift in Sources */,
@@ -389,6 +397,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -399,7 +408,7 @@
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
-				TARGETED_DEVICE_FAMILY = 2;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -591,6 +600,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -601,7 +611,7 @@
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
-				TARGETED_DEVICE_FAMILY = 2;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};

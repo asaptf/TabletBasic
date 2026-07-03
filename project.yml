@@ -31,7 +31,8 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown"
-        TARGETED_DEVICE_FAMILY: "2"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: YES
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
@@ -42,6 +43,27 @@ targets:
         CFBundleDisplayName: TabletBasic
         LSApplicationCategoryType: public.app-category.education
         UILaunchScreen: {}
+        LSSupportsOpeningDocumentsInPlace: true
+        UIFileSharingEnabled: true
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.tabletbasic.bas
+            UTTypeDescription: TabletBasic Program
+            UTTypeConformsTo:
+              - public.plain-text
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - bas
+              public.mime-type:
+                - text/plain
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: BASIC Program
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - com.tabletbasic.bas
+              - public.plain-text
+            CFBundleTypeExtensions:
+              - bas
   TabletBasicTests:
     type: bundle.unit-test
     platform: iOS

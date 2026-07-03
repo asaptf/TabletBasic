@@ -16,12 +16,15 @@ final class IDEViewModel: ObservableObject {
     @Published var showProgramLibrary: Bool = false
     @Published var showAbout: Bool = false
     @Published var showRunOutput: Bool = false
+    @Published var showOpenFilePicker: Bool = false
+    @Published var showSaveFilePicker: Bool = false
     @Published var documentName: String = "Untitled"
     @Published var cursorLine: Int = 1
     @Published var cursorColumn: Int = 1
 
     private let interpreter = QBInterpreter()
     private let consoleOutput = ConsoleOutputHandler()
+    private var documentBookmark: Data?
 
     var screen: ScreenBuffer { interpreter.screen }
     var hasGraphicsOutput: Bool { screen.width > 0 && screen.height > 0 }
@@ -92,9 +95,101 @@ final class IDEViewModel: ObservableObject {
     func newFile() {
         sourceCode = ""
         documentName = "Untitled"
+        documentBookmark = nil
         outputText = ""
         showRunOutput = false
         consoleOutput.clear()
+    }
+
+    var exportDocument: BasicProgramDocument {
+        BasicProgramDocument(text: preparedSource)
+    }
+
+    var defaultSaveFilename: String {
+        let base = documentName == "Untitled" ? "Untitled" : documentName
+        let lower = base.lowercased()
+        if lower.hasSuffix(".bas") { return base }
+        return "\(base).bas"
+    }
+
+    var canSaveToCurrentFile: Bool {
+        documentBookmark != nil
+    }
+
+    func requestOpenFile() {
+        showOpenFilePicker = true
+    }
+
+    func requestSaveFile() {
+        if canSaveToCurrentFile {
+            saveToBookmarkedFile()
+        } else {
+            showSaveFilePicker = true
+        }
+    }
+
+    func requestSaveAsFile() {
+        showSaveFilePicker = true
+    }
+
+    func handleImportedFiles(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            openExternalURL(url)
+        case .failure(let error):
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    func handleExportedFile(_ result: Result<URL, Error>) {
+        switch result {
+        case .success(let url):
+            do {
+                try BasicProgramFileStore.writeText(preparedSource, to: url)
+                documentName = url.lastPathComponent
+                documentBookmark = try BasicProgramFileStore.makeBookmark(for: url)
+                statusMessage = "Saved \(url.lastPathComponent)"
+            } catch {
+                statusMessage = error.localizedDescription
+            }
+        case .failure(let error):
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    func openExternalURL(_ url: URL) {
+        do {
+            let text = try BasicProgramFileStore.readText(from: url)
+            sourceCode = BasicSourceNormalizer.normalize(text)
+            documentName = url.lastPathComponent
+            documentBookmark = try BasicProgramFileStore.makeBookmark(for: url)
+            showWelcome = false
+            showRunOutput = false
+            statusMessage = "Opened \(url.lastPathComponent)"
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    private func saveToBookmarkedFile() {
+        guard let bookmark = documentBookmark else {
+            showSaveFilePicker = true
+            return
+        }
+        do {
+            let url = try BasicProgramFileStore.resolveURL(from: bookmark)
+            try BasicProgramFileStore.writeText(preparedSource, to: url)
+            statusMessage = "Saved \(url.lastPathComponent)"
+        } catch {
+            documentBookmark = nil
+            statusMessage = error.localizedDescription
+            showSaveFilePicker = true
+        }
+    }
+
+    private func clearDocumentReference() {
+        documentBookmark = nil
     }
 
     func clearOutput() {
@@ -112,6 +207,7 @@ final class IDEViewModel: ObservableObject {
     func loadSampleProgram(_ program: SampleProgram) {
         sourceCode = BasicSourceNormalizer.normalize(program.code)
         documentName = program.filename
+        clearDocumentReference()
         showProgramLibrary = false
         showWelcome = false
         showRunOutput = false
@@ -120,6 +216,7 @@ final class IDEViewModel: ObservableObject {
     func loadLesson(_ lesson: Lesson) {
         sourceCode = lesson.starterCode
         documentName = "LESSON.BAS"
+        clearDocumentReference()
         showSurvivalGuide = false
         showWelcome = false
         showRunOutput = false
@@ -139,6 +236,12 @@ final class IDEViewModel: ObservableObject {
             clearOutput()
         case .newFile:
             newFile()
+        case .openFile:
+            requestOpenFile()
+        case .saveFile:
+            requestSaveFile()
+        case .saveAsFile:
+            requestSaveAsFile()
         case .insertLineNumber:
             insertLineNumbers()
         case .openSamples:
@@ -182,6 +285,9 @@ enum IDEAction: String {
     case survivalGuide
     case clear
     case newFile
+    case openFile
+    case saveFile
+    case saveAsFile
     case insertLineNumber
     case openSamples
     case returnToEditor

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct RetroIDEView: View {
     @ObservedObject var viewModel: IDEViewModel
@@ -58,48 +59,87 @@ struct RetroIDEView: View {
         .sheet(isPresented: $viewModel.showAbout) {
             AboutView()
         }
+        .fileImporter(
+            isPresented: $viewModel.showOpenFilePicker,
+            allowedContentTypes: [.basicProgram, .plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            viewModel.handleImportedFiles(result)
+        }
+        .fileExporter(
+            isPresented: $viewModel.showSaveFilePicker,
+            document: viewModel.exportDocument,
+            contentTypes: [.basicProgram, .plainText],
+            defaultFilename: viewModel.defaultSaveFilename
+        ) { result in
+            viewModel.handleExportedFile(result)
+        }
     }
 }
 
 private struct RunOutputView: View {
     @ObservedObject var viewModel: IDEViewModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var hasGraphics: Bool {
+        viewModel.screen.width >= 320 && viewModel.screen.height >= 200
+    }
+
+    private var compactLayout: Bool {
+        LayoutMetrics.isCompact(horizontalSizeClass)
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Program Output")
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Program Output")
+                        .font(QBTheme.monoSmall)
+                        .foregroundStyle(QBTheme.menuText)
+                    Spacer()
+                    if viewModel.isRunning {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.7)
+                    }
+                    Button("Edit") {
+                        viewModel.handleShortcut(.returnToEditor)
+                    }
                     .font(QBTheme.monoSmall)
                     .foregroundStyle(QBTheme.menuText)
-                Spacer()
-                if viewModel.isRunning {
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(0.7)
+                    .accessibilityIdentifier("returnToEditor")
                 }
-                Button("Edit") {
-                    viewModel.handleShortcut(.returnToEditor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+
+                if hasGraphics {
+                    GraphicsCanvasView(screen: viewModel.screen, revision: viewModel.screenRevision)
+                        .frame(
+                            maxHeight: LayoutMetrics.graphicsMaxHeight(
+                                compact: compactLayout,
+                                totalHeight: geometry.size.height,
+                                hasGraphics: true
+                            ) ?? .infinity
+                        )
                 }
-                .font(QBTheme.monoSmall)
-                .foregroundStyle(QBTheme.menuText)
-                .accessibilityIdentifier("returnToEditor")
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
 
-            if viewModel.screen.width >= 320 && viewModel.screen.height >= 200 {
-                GraphicsCanvasView(screen: viewModel.screen, revision: viewModel.screenRevision)
-                    .frame(maxHeight: .infinity)
+                ScrollView {
+                    Text(viewModel.outputText.isEmpty ? " " : viewModel.outputText)
+                        .accessibilityIdentifier("programOutput")
+                        .font(compactLayout ? QBTheme.monoSmall : QBTheme.monoFont)
+                        .foregroundStyle(QBTheme.editorText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                }
+                .frame(
+                    maxHeight: LayoutMetrics.outputTextMaxHeight(
+                        compact: compactLayout,
+                        totalHeight: geometry.size.height,
+                        hasGraphics: hasGraphics
+                    )
+                )
             }
-
-            ScrollView {
-                Text(viewModel.outputText.isEmpty ? " " : viewModel.outputText)
-                    .accessibilityIdentifier("programOutput")
-                    .font(QBTheme.monoFont)
-                    .foregroundStyle(QBTheme.editorText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-            }
-            .frame(maxHeight: viewModel.screen.width >= 320 ? 120 : .infinity)
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .background(QBTheme.background)
     }

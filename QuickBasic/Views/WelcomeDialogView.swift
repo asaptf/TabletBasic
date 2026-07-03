@@ -3,6 +3,11 @@ import SwiftUI
 struct WelcomeDialogView: View {
     let onEnter: () -> Void
     let onEscape: () -> Void
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var compactLayout: Bool {
+        LayoutMetrics.isCompact(horizontalSizeClass)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,13 +25,17 @@ struct WelcomeDialogView: View {
                     .padding(.bottom, 8)
 
                 Button(action: onEnter) {
-                    Text("< Press Enter to see the \(AppBranding.name) Learning Guide >")
+                    Text(compactLayout
+                         ? "Open Learning Guide"
+                         : "< Press Enter to see the \(AppBranding.name) Learning Guide >")
                         .font(QBTheme.dialogFont)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: onEscape) {
-                    Text("< Press ESC to clear this dialog box >")
+                    Text(compactLayout
+                         ? "Continue to Editor"
+                         : "< Press ESC to clear this dialog box >")
                         .font(QBTheme.dialogFont)
                 }
                 .buttonStyle(.plain)
@@ -34,14 +43,15 @@ struct WelcomeDialogView: View {
             }
             .multilineTextAlignment(.center)
             .foregroundStyle(QBTheme.dialogText)
-            .padding(.horizontal, 28)
-            .padding(.vertical, 20)
+            .padding(.horizontal, compactLayout ? 16 : 28)
+            .padding(.vertical, compactLayout ? 16 : 20)
             .background(QBTheme.dialogBackground)
             .overlay(
                 Rectangle()
                     .stroke(QBTheme.dialogBorder, lineWidth: 2)
             )
-            .frame(maxWidth: 520)
+            .frame(maxWidth: LayoutMetrics.welcomeMaxWidth(compact: compactLayout))
+            .padding(.horizontal, compactLayout ? 12 : 0)
 
             Spacer()
         }

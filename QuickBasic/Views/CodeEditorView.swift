@@ -4,18 +4,23 @@ struct CodeEditorView: View {
     @Binding var text: String
     @Binding var cursorLine: Int
     @Binding var cursorColumn: Int
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var compactLayout: Bool {
+        LayoutMetrics.isCompact(horizontalSizeClass)
+    }
 
     var body: some View {
         HStack(spacing: 0) {
-            LineNumberGutter(text: text, activeLine: cursorLine)
-                .frame(width: 48)
+            LineNumberGutter(text: text, activeLine: cursorLine, compact: compactLayout)
+                .frame(width: LayoutMetrics.lineNumberGutterWidth(compact: compactLayout))
 
             Rectangle()
                 .fill(QBTheme.menuText.opacity(0.25))
                 .frame(width: 1)
 
             TextEditor(text: $text)
-                .font(QBTheme.monoFont)
+                .font(compactLayout ? QBTheme.monoSmall : QBTheme.monoFont)
                 .foregroundStyle(QBTheme.editorText)
                 .scrollContentBackground(.hidden)
                 .background(QBTheme.editorBackground)
@@ -42,6 +47,7 @@ struct CodeEditorView: View {
 private struct LineNumberGutter: View {
     let text: String
     let activeLine: Int
+    let compact: Bool
 
     private var lineCount: Int {
         max(1, text.split(separator: "\n", omittingEmptySubsequences: false).count)
@@ -52,7 +58,7 @@ private struct LineNumberGutter: View {
             VStack(alignment: .trailing, spacing: 0) {
                 ForEach(1...lineCount, id: \.self) { line in
                     Text("\(line)")
-                        .font(QBTheme.monoFont)
+                        .font(compact ? QBTheme.monoSmall : QBTheme.monoFont)
                         .foregroundStyle(line == activeLine ? QBTheme.menuText : QBTheme.lineNumberText)
                         .frame(height: 22, alignment: .trailing)
                         .frame(maxWidth: .infinity, alignment: .trailing)

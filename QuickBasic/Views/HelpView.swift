@@ -15,6 +15,8 @@ struct HelpView: View {
                     """)
 
                     helpSection("Menus", """
+                    File > Open...               Open .bas from Files / iCloud
+                    File > Save / Save As...     Save to Files / iCloud
                     File > Open Sample Program   20 built-in demos
                     Run > Start                  Run current program
                     Help > Learning Guide        Step-by-step lessons

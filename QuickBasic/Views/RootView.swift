@@ -6,5 +6,8 @@ struct RootView: View {
     var body: some View {
         RetroIDEView(viewModel: viewModel)
             .ignoresSafeArea(.keyboard, edges: .bottom)
+            .onOpenURL { url in
+                viewModel.openExternalURL(url)
+            }
     }
 }

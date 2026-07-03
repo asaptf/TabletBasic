@@ -40,6 +40,41 @@ final class TabletBasicTests: XCTestCase {
     }
 
     @MainActor
+    func testOpenAndSaveBasicProgramFile() throws {
+        let viewModel = IDEViewModel()
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("RoundTrip-\(UUID().uuidString).bas")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let source = """
+        PRINT "Files test"
+        A = 2 ^ 8
+        PRINT A
+        """
+        try source.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        viewModel.openExternalURL(fileURL)
+        XCTAssertEqual(viewModel.documentName, fileURL.lastPathComponent)
+        XCTAssertTrue(viewModel.sourceCode.contains("Files test"))
+        XCTAssertTrue(viewModel.canSaveToCurrentFile)
+
+        viewModel.sourceCode += "\nPRINT \"Saved\""
+        viewModel.requestSaveFile()
+        XCTAssertEqual(try String(contentsOf: fileURL, encoding: .utf8), viewModel.preparedSource)
+    }
+
+    @MainActor
+    func testBasicProgramDocumentPreservesSource() {
+        let original = "PRINT \"Hello\"\nA = 10"
+        let document = BasicProgramDocument(text: original)
+        XCTAssertEqual(document.text, original)
+
+        let viewModel = IDEViewModel()
+        viewModel.sourceCode = original
+        XCTAssertEqual(viewModel.exportDocument.text, viewModel.preparedSource)
+    }
+
+    @MainActor
     func testEachSampleProgramByFilename() async throws {
         for filename in expectedFilenames {
             try await assertViewModelRuns(filename)
