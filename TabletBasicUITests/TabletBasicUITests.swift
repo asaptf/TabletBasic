@@ -25,13 +25,7 @@ final class TabletBasicUITests: XCTestCase {
     func testLoadMathBasAndRunFromSampleLibrary() throws {
         try dismissWelcome()
 
-        let fileMenu = app.buttons["menuFile"]
-        XCTAssertTrue(fileMenu.waitForExistence(timeout: 3))
-        fileMenu.tap()
-
-        let openSamples = app.buttons["menuItem_File_Open Sample Program..."]
-        XCTAssertTrue(openSamples.waitForExistence(timeout: 3))
-        openSamples.tap()
+        app.tapMenuItem(menu: "File", item: "Open Sample Program...")
 
         let mathRow = app.staticTexts["MATH.BAS"]
         XCTAssertTrue(mathRow.waitForExistence(timeout: 5))
@@ -60,6 +54,7 @@ final class TabletBasicUITests: XCTestCase {
         XCTAssertTrue(statusBar.waitForExistence(timeout: 3))
         let yBefore = statusBar.frame.origin.y
 
+        app.revealMainMenuIfNeeded()
         app.buttons["menuFile"].tap()
         XCTAssertTrue(app.buttons["menuItem_File_Open Sample Program..."].waitForExistence(timeout: 2))
 

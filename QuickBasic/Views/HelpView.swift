@@ -20,6 +20,7 @@ struct HelpView: View {
                     File > Open Sample Program   20 built-in demos
                     Run > Start                  Run current program
                     Help > Learning Guide        Step-by-step lessons
+                    Help > About                 Author and app info
                     """)
 
                     helpSection("Statements", """

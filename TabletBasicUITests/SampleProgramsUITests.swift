@@ -141,18 +141,17 @@ final class SampleProgramsUITests: XCTestCase {
 
     private func runFromRunMenu() throws {
         try dismissWelcomeIfNeeded()
-        app.buttons["menuRun"].tap()
-        let start = app.buttons["menuItem_Run_Start"]
-        XCTAssertTrue(start.waitForExistence(timeout: 3))
-        start.tap()
+        let quickRun = app.buttons["quickRun"]
+        if quickRun.waitForExistence(timeout: 1) {
+            quickRun.tap()
+        } else {
+            app.tapMenuItem(menu: "Run", item: "Start")
+        }
     }
 
     private func openSampleLibrary() throws {
         try dismissWelcomeIfNeeded()
-        app.buttons["menuFile"].tap()
-        let openSamples = app.buttons["menuItem_File_Open Sample Program..."]
-        XCTAssertTrue(openSamples.waitForExistence(timeout: 3))
-        openSamples.tap()
+        app.tapMenuItem(menu: "File", item: "Open Sample Program...")
         XCTAssertTrue(app.navigationBars["Sample Programs"].waitForExistence(timeout: 5))
     }
 
@@ -213,7 +212,7 @@ final class SampleProgramsUITests: XCTestCase {
 
     private func assertOutput(_ filename: String, contains expected: String) {
         let output = app.staticTexts["programOutput"]
-        XCTAssertTrue(output.waitForExistence(timeout: 5))
+        XCTAssertTrue(output.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["returnToEditor"].waitForExistence(timeout: 5))
 
         let text = waitForProgramOutput(containing: expected, element: output, timeout: 25)

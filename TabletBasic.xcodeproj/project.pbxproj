@@ -12,6 +12,7 @@
 		4DA80E36EA7A81F441DAE4BC /* ProgramLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2BE87013C68659342DF5750 /* ProgramLibraryView.swift */; };
 		51ED1C311176717F3BC5B6FC /* QBEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5DACDD412BD0EBA04FC7ADF7 /* QBEngine */; };
 		53E380DFBC08F3CAECA8EAD4 /* LayoutMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B6782F0230023A8A45B91B /* LayoutMetrics.swift */; };
+		5F95AB309C9B43E7223D71EE /* UITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F6DF032F117F6145E8410A /* UITestHelpers.swift */; };
 		716DA9668BE93E8AD64DD52D /* QBEngine in Frameworks */ = {isa = PBXBuildFile; productRef = E22716B21D031B60747A1CA0 /* QBEngine */; };
 		77DC9526E48D87CE11CE5419 /* Lesson.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54EA3B57ADB0DE250E4BC90 /* Lesson.swift */; };
 		7E8BC1EF1201951C303905A3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FDD4475D04E2AEFC15514A58 /* Assets.xcassets */; };
@@ -79,6 +80,7 @@
 		D15D2EE517633F7297558EE1 /* TabletBasicUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletBasicUITests.swift; sourceTree = "<group>"; };
 		DB3A267474297CEEA9D1B4CB /* TabletBasic.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TabletBasic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC47CE3BBDDCA8FE6756CB94 /* QBTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QBTheme.swift; sourceTree = "<group>"; };
+		E7F6DF032F117F6145E8410A /* UITestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHelpers.swift; sourceTree = "<group>"; };
 		EDC105CDFD79670002FDA15E /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		FB0184E3EA52B854D226140D /* GraphicsCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsCanvasView.swift; sourceTree = "<group>"; };
 		FDD4475D04E2AEFC15514A58 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -122,6 +124,7 @@
 			children = (
 				732FAF7E6BE1AF4445AE73D4 /* SampleProgramsUITests.swift */,
 				D15D2EE517633F7297558EE1 /* TabletBasicUITests.swift */,
+				E7F6DF032F117F6145E8410A /* UITestHelpers.swift */,
 			);
 			path = TabletBasicUITests;
 			sourceTree = "<group>";
@@ -366,6 +369,7 @@
 			files = (
 				E6EE8F7DCA6B836F1C1F5EBF /* SampleProgramsUITests.swift in Sources */,
 				A468E1851CE1AE36E7E157C1 /* TabletBasicUITests.swift in Sources */,
+				5F95AB309C9B43E7223D71EE /* UITestHelpers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
