@@ -87,6 +87,7 @@ struct CodeEditorView: View {
                 onSelectionChange: updateCursor,
                 onScroll: { editorScrollOffset = $0 }
             )
+            .accessibilityIdentifier("sourceEditor")
         }
         .background(QBTheme.editorBackground)
     }
@@ -123,6 +124,7 @@ private struct BasicTextEditor: UIViewRepresentable {
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
         textView.textContainer.lineFragmentPadding = 0
         textView.keyboardDismissMode = .interactive
+        textView.accessibilityIdentifier = "sourceEditor"
         context.coordinator.applyStyledText(to: textView, text: text, selection: NSRange(location: 0, length: 0))
         context.coordinator.attach(to: textView)
         context.coordinator.reportSelection(in: textView)
@@ -139,12 +141,16 @@ private struct BasicTextEditor: UIViewRepresentable {
             textView.tintColor = textColor
         }
 
-        guard textView.text != text else { return }
+        let currentText = textView.text ?? ""
+        guard currentText != text else { return }
 
+        let selection = text.isEmpty
+            ? NSRange(location: 0, length: 0)
+            : textView.selectedRange
         context.coordinator.applyStyledText(
             to: textView,
             text: text,
-            selection: textView.selectedRange
+            selection: selection
         )
         context.coordinator.reportSelection(in: textView)
     }

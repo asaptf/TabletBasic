@@ -151,6 +151,7 @@ private struct ProgramDetailPane: View {
                 viewModel.loadSampleProgram(program)
                 onClose()
             }
+            .accessibilityIdentifier("loadProgram")
 
             SampleActionButton(title: "Load & Run", icon: "play.fill", style: .accent) {
                 viewModel.loadSampleProgram(program)

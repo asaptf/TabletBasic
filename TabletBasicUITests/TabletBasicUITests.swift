@@ -67,6 +67,54 @@ final class TabletBasicUITests: XCTestCase {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.6)).tap()
     }
 
+    func testFileNewClearsDocumentFromWelcome() throws {
+        XCTAssertTrue(app.staticTexts["Welcome to"].waitForExistence(timeout: 5))
+
+        app.tapMenuItem(menu: "File", item: "New...")
+
+        XCTAssertFalse(app.staticTexts["Welcome to"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Untitled"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textViews["sourceEditor"].waitForExistence(timeout: 3))
+    }
+
+    func testFileNewClearsLoadedProgram() throws {
+        try dismissWelcome()
+
+        app.tapMenuItem(menu: "File", item: "Open Sample Program...")
+        let mathRow = app.staticTexts["MATH.BAS"]
+        XCTAssertTrue(mathRow.waitForExistence(timeout: 5))
+        mathRow.tap()
+
+        let load = app.buttons["loadProgram"]
+        XCTAssertTrue(load.waitForExistence(timeout: 3))
+        load.tap()
+
+        XCTAssertTrue(app.staticTexts["MATH.BAS"].waitForExistence(timeout: 3))
+        app.tapMenuItem(menu: "File", item: "New...")
+        XCTAssertTrue(app.staticTexts["Untitled"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textViews["sourceEditor"].waitForExistence(timeout: 3))
+    }
+
+    func testEnabledMenuItemsRespond() throws {
+        try dismissWelcome()
+
+        app.tapMenuItem(menu: "Help", item: "About")
+        XCTAssertTrue(app.buttons["aboutDismiss"].waitForExistence(timeout: 3))
+        app.buttons["aboutDismiss"].tap()
+
+        app.tapMenuItem(menu: "Run", item: "Start")
+        XCTAssertTrue(app.staticTexts["programOutput"].waitForExistence(timeout: 8))
+
+        app.tapMenuItem(menu: "View", item: "Return to Editor")
+        XCTAssertTrue(app.textViews["sourceEditor"].waitForExistence(timeout: 3))
+
+        app.tapMenuItem(menu: "Edit", item: "Insert Line Numbers")
+        XCTAssertTrue(app.textViews["sourceEditor"].waitForExistence(timeout: 3))
+
+        app.tapMenuItem(menu: "File", item: "Clear Output")
+        XCTAssertTrue(app.textViews["sourceEditor"].waitForExistence(timeout: 3))
+    }
+
     func testCompactMenuItemsAreHittable() throws {
         try dismissWelcome()
 

@@ -21,6 +21,11 @@ extension XCUIApplication {
         let menuButton = buttons["menu\(menu)"]
         if menuButton.waitForExistence(timeout: 1) {
             menuButton.tap()
+        } else {
+            let overflow = buttons["menuOverflow"]
+            if overflow.waitForExistence(timeout: 1) {
+                overflow.tap()
+            }
         }
 
         let itemButton = buttons["menuItem_\(menu)_\(item)"].firstMatch

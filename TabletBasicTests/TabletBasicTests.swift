@@ -4,6 +4,64 @@ import XCTest
 
 final class TabletBasicTests: XCTestCase {
     @MainActor
+    func testNewFileDismissesWelcomeAndClearsDocument() {
+        let viewModel = IDEViewModel()
+        XCTAssertTrue(viewModel.showWelcome)
+
+        viewModel.handleShortcut(.newFile)
+
+        XCTAssertFalse(viewModel.showWelcome)
+        XCTAssertFalse(viewModel.showRunOutput)
+        XCTAssertEqual(viewModel.documentName, "Untitled")
+        XCTAssertEqual(viewModel.sourceCode, "")
+        XCTAssertEqual(viewModel.cursorLine, 1)
+        XCTAssertEqual(viewModel.cursorColumn, 1)
+    }
+
+    @MainActor
+    func testNewFileClearsLoadedSampleProgram() {
+        let viewModel = IDEViewModel()
+        guard let math = SampleProgramLibrary.all.first(where: { $0.filename == "MATH.BAS" }) else {
+            XCTFail("MATH.BAS missing")
+            return
+        }
+
+        viewModel.loadSampleProgram(math)
+        XCTAssertEqual(viewModel.documentName, "MATH.BAS")
+        XCTAssertFalse(viewModel.sourceCode.isEmpty)
+
+        viewModel.handleShortcut(.newFile)
+
+        XCTAssertEqual(viewModel.documentName, "Untitled")
+        XCTAssertEqual(viewModel.sourceCode, "")
+        XCTAssertFalse(viewModel.showProgramLibrary)
+    }
+
+    @MainActor
+    func testMenuActionsPresentEditor() async throws {
+        let viewModel = IDEViewModel()
+        guard let math = SampleProgramLibrary.all.first(where: { $0.filename == "MATH.BAS" }) else {
+            XCTFail("MATH.BAS missing")
+            return
+        }
+
+        viewModel.loadSampleProgram(math)
+        viewModel.runProgram()
+        try await waitForProgramFinish(viewModel)
+        XCTAssertTrue(viewModel.showRunOutput)
+
+        viewModel.handleShortcut(.returnToEditor)
+        XCTAssertFalse(viewModel.showRunOutput)
+
+        viewModel.handleShortcut(.newFile)
+        XCTAssertFalse(viewModel.showRunOutput)
+        viewModel.sourceCode = "PRINT \"Menu test\""
+        viewModel.handleShortcut(.insertLineNumber)
+        XCTAssertFalse(viewModel.showRunOutput)
+        XCTAssertTrue(viewModel.sourceCode.contains("10 PRINT"))
+    }
+
+    @MainActor
     func testLoadMathBasAndRunThroughViewModel() async throws {
         let viewModel = IDEViewModel()
         guard let math = SampleProgramLibrary.all.first(where: { $0.filename == "MATH.BAS" }) else {

@@ -91,16 +91,22 @@ final class IDEViewModel: ObservableObject {
     }
 
     func returnToEditor() {
-        showRunOutput = false
+        presentEditor()
     }
 
     func newFile() {
+        dismissModalSheets()
+        presentEditor()
         sourceCode = ""
         documentName = "Untitled"
         documentBookmark = nil
         outputText = ""
-        showRunOutput = false
         consoleOutput.clear()
+        interpreter.screen.reset()
+        screenRevision += 1
+        cursorLine = 1
+        cursorColumn = 1
+        statusMessage = ""
     }
 
     var exportDocument: BasicProgramDocument {
@@ -119,6 +125,7 @@ final class IDEViewModel: ObservableObject {
     }
 
     func requestOpenFile() {
+        presentEditor()
         showOpenFilePicker = true
     }
 
@@ -247,6 +254,7 @@ final class IDEViewModel: ObservableObject {
         case .insertLineNumber:
             insertLineNumbers()
         case .openSamples:
+            presentEditor()
             showProgramLibrary = true
         case .returnToEditor:
             returnToEditor()
@@ -259,7 +267,20 @@ final class IDEViewModel: ObservableObject {
         }
     }
 
+    private func presentEditor() {
+        showWelcome = false
+        showRunOutput = false
+    }
+
+    private func dismissModalSheets() {
+        showHelp = false
+        showSurvivalGuide = false
+        showProgramLibrary = false
+        showAbout = false
+    }
+
     private func insertLineNumbers() {
+        presentEditor()
         let lines = sourceCode.split(separator: "\n", omittingEmptySubsequences: false)
         var numbered: [String] = []
         var lineNum = 10
