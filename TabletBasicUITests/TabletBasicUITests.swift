@@ -138,10 +138,85 @@ final class TabletBasicUITests: XCTestCase {
         add(attachment)
     }
 
+    func testCaptureAppStoreScreenshots() throws {
+        let environment = ProcessInfo.processInfo.environment
+        let outputURL = URL(
+            fileURLWithPath: environment["APP_STORE_SCREENSHOT_DIR"] ?? defaultScreenshotDirectory(),
+            isDirectory: true
+        )
+        let prefix = environment["APP_STORE_SCREENSHOT_PREFIX"] ?? screenshotPrefix()
+        try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
+
+        XCTAssertTrue(app.staticTexts["Welcome to"].waitForExistence(timeout: 5))
+        try saveScreenshot("01_\(prefix)_welcome", to: outputURL)
+
+        relaunchForScreenshot(sample: "HELLO.BAS")
+        XCTAssertTrue(app.textViews["sourceEditor"].waitForExistence(timeout: 5))
+        try saveScreenshot("02_\(prefix)_editor", to: outputURL)
+
+        app.tapMenuItem(menu: "File", item: "Open Sample Program...")
+        XCTAssertTrue(app.navigationBars["Sample Programs"].waitForExistence(timeout: 5))
+        try saveScreenshot("03_\(prefix)_samples", to: outputURL)
+
+        relaunchForScreenshot(sample: "MOIRE.BAS")
+        app.tapMenuItem(menu: "Run", item: "Start")
+        XCTAssertTrue(app.staticTexts["programOutput"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["returnToEditor"].waitForExistence(timeout: 10))
+        try saveScreenshot("04_\(prefix)_graphics", to: outputURL)
+
+        relaunchForScreenshot(sample: nil)
+        try dismissWelcome()
+        app.tapMenuItem(menu: "Help", item: "Learning Guide")
+        XCTAssertTrue(app.navigationBars["TabletBasic Learning Guide"].waitForExistence(timeout: 5))
+        if app.staticTexts["Hello, World!"].waitForExistence(timeout: 2) {
+            app.staticTexts["Hello, World!"].tap()
+        }
+        _ = app.buttons["Open in Editor"].waitForExistence(timeout: 3)
+        try saveScreenshot("05_\(prefix)_lessons", to: outputURL)
+    }
+
     private func dismissWelcome() throws {
         let dismiss = app.buttons["welcomeDismiss"]
         XCTAssertTrue(dismiss.waitForExistence(timeout: 5))
         dismiss.tap()
         XCTAssertFalse(app.staticTexts["Welcome to"].waitForExistence(timeout: 2))
+    }
+
+    private func relaunchForScreenshot(sample filename: String?) {
+        app.terminate()
+        app.launchArguments = ["UI_TESTING"]
+        if let filename {
+            app.launchEnvironment = ["UI_TEST_SAMPLE": filename]
+        } else {
+            app.launchEnvironment = [:]
+        }
+        app.launch()
+    }
+
+    private func saveScreenshot(_ name: String, to outputURL: URL) throws {
+        let screenshot = XCUIScreen.main.screenshot()
+        let fileURL = outputURL.appendingPathComponent("\(name).png")
+        try screenshot.pngRepresentation.write(to: fileURL)
+
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func defaultScreenshotDirectory() -> String {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("fastlane/screenshots/en-US")
+            .path
+    }
+
+    private func screenshotPrefix() -> String {
+        let frame = app.windows.firstMatch.frame
+        if min(frame.width, frame.height) < 700 {
+            return "IPHONE_69"
+        }
+        return "IPAD_PRO_3GEN_129"
     }
 }

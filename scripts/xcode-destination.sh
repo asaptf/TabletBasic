@@ -12,17 +12,9 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 pick_device() {
   local family="$1"
   xcrun simctl list devices available |
-    awk -v family="$family" -F '[()]' '
-      $0 ~ family && $0 !~ /unavailable/ {
-        name = $1
-        sub(/^[[:space:]]+/, "", name)
-        sub(/[[:space:]]+$/, "", name)
-        id = $2
-        if (id != "" && name != "") {
-          print name "|" id
-        }
-      }
-    ' |
+    grep -F "$family" |
+    grep -v unavailable |
+    sed -nE 's/^[[:space:]]*(.+)[[:space:]]+\(([0-9A-Fa-f-]{36})\)[[:space:]]+\((Booted|Shutdown)\).*/\1|\2/p' |
     head -1
 }
 
