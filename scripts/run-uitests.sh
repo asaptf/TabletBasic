@@ -9,7 +9,10 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-DESTINATION="${DESTINATION:-platform=iOS Simulator,name=iPad Pro 13-inch (M5)}"
+if [ -z "${DESTINATION:-}" ]; then
+  DEVICE_KIND="${DEVICE_KIND:-ipad}"
+  DESTINATION="$("$ROOT/scripts/xcode-destination.sh" "$DEVICE_KIND")"
+fi
 LOG="${LOG:-/tmp/tabletbasic-uitest.log}"
 
 TESTS=("$@")
@@ -26,6 +29,7 @@ for test in "${TESTS[@]}"; do
   ARGS+=(-only-testing:"$test")
 done
 
+echo "Destination: $DESTINATION"
 echo "Running UI tests: ${TESTS[*]}"
 echo "Log: $LOG"
 
