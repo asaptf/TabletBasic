@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TabletBasic Support</title>
+  <meta name="description" content="Support and help for TabletBasic, a retro BASIC learning app for iPhone and iPad.">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0b1f3a;
+      --panel: #123a6b;
+      --text: #e8f1ff;
+      --muted: #b8c9e6;
+      --accent: #7ec8ff;
+      --border: #2a5f9e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, var(--bg), #071428);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 3rem;
+    }
+
+    h1, h2 {
+      line-height: 1.25;
+      margin: 0 0 0.75rem;
+    }
+
+    h1 { font-size: 2rem; }
+    h2 {
+      font-size: 1.15rem;
+      margin-top: 2rem;
+      color: var(--accent);
+    }
+
+    p, li { color: var(--muted); }
+
+    .card {
+      background: rgba(18, 58, 107, 0.55);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+
+    ul {
+      margin: 0.5rem 0 0;
+      padding-left: 1.25rem;
+    }
+
+    footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>TabletBasic Support</h1>
+    <p>
+      TabletBasic is a retro BASIC learning environment for iPhone and iPad.
+      This page provides support information for questions, feedback, and bug reports.
+    </p>
+
+    <div class="card">
+      <h2>Contact</h2>
+      <p>For support requests, questions, or feedback, use one of the options below:</p>
+      <ul>
+        <li>
+          <strong>GitHub Issues:</strong>
+          <a href="https://github.com/asaptf/TabletBasic/issues">Report a bug or ask a question</a>
+        </li>
+        <li>
+          <strong>Project repository:</strong>
+          <a href="https://github.com/asaptf/TabletBasic">github.com/asaptf/TabletBasic</a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Getting Started</h2>
+      <ul>
+        <li>On launch, press <strong>Enter</strong> to open the learning guide or <strong>Esc</strong> to dismiss the welcome dialog.</li>
+        <li>Use <strong>File &gt; Open Sample Program</strong> to load built-in BASIC examples.</li>
+        <li>Use <strong>Run &gt; Start</strong> to execute the current program.</li>
+        <li>Try immediate mode for quick experiments with short BASIC statements.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Frequently Asked Questions</h2>
+      <p><strong>Does TabletBasic require an account or internet connection?</strong><br>
+      No. The app runs locally on your device and does not require login for normal use.</p>
+
+      <p><strong>Is TabletBasic affiliated with Microsoft or Apple?</strong><br>
+      No. TabletBasic is an independent educational project inspired by classic BASIC environments.</p>
+
+      <p><strong>Where are my programs stored?</strong><br>
+      Programs stay on your device unless you save or export them using the system file picker or iCloud Drive.</p>
+    </div>
+
+    <div class="card">
+      <h2>Privacy</h2>
+      <p>
+        TabletBasic does not collect, store, or transmit personal data.
+        Read the full policy:
+        <a href="https://github.com/asaptf/TabletBasic/blob/main/PRIVACY.md">Privacy Policy</a>
+      </p>
+    </div>
+
+    <footer>
+      <p>TabletBasic &copy; 2026 Andrey Sapunov</p>
+      <p>Independent project. Not affiliated with Microsoft or Apple.</p>
+    </footer>
+  </main>
+</body>
+</html>
