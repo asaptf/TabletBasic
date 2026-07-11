@@ -44,6 +44,7 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
     public static let cdate = Keyword(rawValue: "cdate")
     public static let chr = Keyword(rawValue: "chr")
     public static let circle = Keyword(rawValue: "circle")
+    public static let close = Keyword(rawValue: "close")
     public static let cls = Keyword(rawValue: "cls")
     public static let color = Keyword(rawValue: "color")
     public static let const = Keyword(rawValue: "const")
@@ -85,11 +86,14 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
     public static let len = Keyword(rawValue: "len")
     public static let `let` = Keyword(rawValue: "let")
     public static let line = Keyword(rawValue: "line")
+    public static let lbound = Keyword(rawValue: "lbound")
     public static let loc = Keyword(rawValue: "loc")
+    public static let locate = Keyword(rawValue: "locate")
     public static let log = Keyword(rawValue: "log")
     public static let long = Keyword(rawValue: "long")
     public static let loop = Keyword(rawValue: "loop")
     public static let lset = Keyword(rawValue: "lset")
+    public static let ltrim = Keyword(rawValue: "ltrim")
     public static let mid = Keyword(rawValue: "mid")
     public static let mod = Keyword(rawValue: "mod")
     public static let next = Keyword(rawValue: "next")
@@ -98,6 +102,7 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
     public static let open = Keyword(rawValue: "open")
     public static let option = Keyword(rawValue: "option")
     public static let or = Keyword(rawValue: "or")
+    public static let output = Keyword(rawValue: "output")
     public static let paint = Keyword(rawValue: "paint")
     public static let pcopy = Keyword(rawValue: "pcopy")
     public static let peek = Keyword(rawValue: "peek")
@@ -106,6 +111,7 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
     public static let print = Keyword(rawValue: "print")
     public static let pset = Keyword(rawValue: "pset")
     public static let put = Keyword(rawValue: "put")
+    public static let random = Keyword(rawValue: "random")
     public static let randomize = Keyword(rawValue: "randomize")
     public static let read = Keyword(rawValue: "read")
     public static let redim = Keyword(rawValue: "redim")
@@ -114,6 +120,7 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
     public static let `return` = Keyword(rawValue: "return")
     public static let right = Keyword(rawValue: "right")
     public static let rset = Keyword(rawValue: "rset")
+    public static let rtrim = Keyword(rawValue: "rtrim")
     public static let rnd = Keyword(rawValue: "rnd")
     public static let select = Keyword(rawValue: "select")
     public static let screen = Keyword(rawValue: "screen")
@@ -140,10 +147,13 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
     public static let tan = Keyword(rawValue: "tan")
     public static let then = Keyword(rawValue: "then")
     public static let time = Keyword(rawValue: "time")
+    public static let timer = Keyword(rawValue: "timer")
     public static let to = Keyword(rawValue: "to")
+    public static let type = Keyword(rawValue: "type")
     public static let ubound = Keyword(rawValue: "ubound")
     public static let ucase = Keyword(rawValue: "ucase")
     public static let until = Keyword(rawValue: "until")
+    public static let using = Keyword(rawValue: "using")
     public static let val = Keyword(rawValue: "val")
     public static let varptr = Keyword(rawValue: "varptr")
     public static let view = Keyword(rawValue: "view")
@@ -155,15 +165,15 @@ public struct Keyword: Hashable, Sendable, RawRepresentable {
 
     public static let all: [Keyword] = [
         .abs, .and, .append, .as, .beep, .bload, .bsave, .call, .case, .cdate, .chr, .circle,
-        .cls, .color, .const, .cos, .data, .date, .declare, .def, .defdbl, .defint, .deflng,
+        .close, .cls, .color, .const, .cos, .data, .date, .declare, .def, .defdbl, .defint, .deflng,
         .defsng, .defstr, .dim, .do, .double, .draw, .else, .elseif, .end, .eqv, .erase,
         .exit, .exp, .field, .for, .function, .get, .gosub, .goto, .if, .imp, .inkey, .input,
-        .instr, .int, .integer, .left, .len, .let, .line, .loc, .log, .long, .loop, .lset,
-        .mid, .mod, .next, .not, .on, .open, .option, .or, .paint, .pcopy, .peek, .poke,
-        .preset, .print, .pset, .put, .randomize, .read, .redim, .rem, .restore, .return,
-        .right, .rset, .rnd, .select, .screen, .seek, .sgn, .shared, .sin, .single, .sleep, .sng,
+        .instr, .int, .integer, .left, .len, .let, .line, .lbound, .loc, .locate, .log, .long, .loop, .lset,
+        .ltrim, .mid, .mod, .next, .not, .on, .open, .option, .or, .output, .paint, .pcopy, .peek, .poke,
+        .preset, .print, .pset, .put, .random, .randomize, .read, .redim, .rem, .restore, .return,
+        .right, .rset, .rtrim, .rnd, .select, .screen, .seek, .sgn, .shared, .sin, .single, .sleep, .sng,
         .sound, .space, .spc, .sqr, .static, .step, .stop, .str, .string, .sub, .swap,
-        .tab, .tan, .then, .time, .to, .ubound, .ucase, .lcase, .until, .val, .varptr, .view,
+        .tab, .tan, .then, .time, .timer, .to, .type, .ubound, .ucase, .lcase, .until, .using, .val, .varptr, .view,
         .wend, .while, .width, .write, .xor
     ]
 

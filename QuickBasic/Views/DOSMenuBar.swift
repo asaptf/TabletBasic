@@ -44,6 +44,9 @@ struct DOSMenuBar: View {
                 .init("Clear Output", action: .clear)
             ]),
             DOSMenuDefinition(title: "Edit", items: [
+                .init("Find...", action: .find),
+                .init("Find Next", action: .findNext),
+                .separator,
                 .init("Insert Line Numbers", action: .insertLineNumber)
             ]),
             DOSMenuDefinition(title: "View", items: [
@@ -51,7 +54,12 @@ struct DOSMenuBar: View {
             ]),
             DOSMenuDefinition(title: "Run", items: [
                 .init("Start", action: .run),
-                .init("Restart", action: .run)
+                .init("Restart", action: .run),
+                .init("Stop", action: .stop),
+                .separator,
+                .init("Step", action: .step),
+                .init("Continue", action: .continueRun),
+                .init("Toggle Breakpoint", action: .toggleBreakpoint)
             ]),
             DOSMenuDefinition(title: "Help", items: [
                 .init("Help (F1)", action: .help),

@@ -8,6 +8,7 @@ languages(["en-US"])
 overwrite_screenshots(true)
 skip_binary_upload(true)
 submit_for_review(false)
-force(false)
+force(true)
+run_precheck_before_submit(false)
 
 precheck_default_rule_level(:warn)

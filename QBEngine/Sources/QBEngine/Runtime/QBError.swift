@@ -10,6 +10,9 @@ public enum QBError: Error, Equatable, Sendable, LocalizedError {
     case breakWhile
     case exitSub
     case exitFunction
+    case programStopped
+    case breakpointHit
+    case stepComplete
 
     public var errorDescription: String? {
         switch self {
@@ -22,6 +25,9 @@ public enum QBError: Error, Equatable, Sendable, LocalizedError {
         case .breakWhile: return nil
         case .exitSub: return nil
         case .exitFunction: return nil
+        case .programStopped: return "Program stopped"
+        case .breakpointHit: return "Breakpoint"
+        case .stepComplete: return "Step"
         }
     }
 }

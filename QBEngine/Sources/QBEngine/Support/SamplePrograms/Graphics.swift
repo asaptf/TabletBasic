@@ -237,7 +237,7 @@ enum GraphicsPrograms {
                 X2% = X1% + 35
                 Y2% = 170
                 Y1% = Y2% - H%(I%)
-                LINE (X1%, Y1%)-(X2%, Y2%), I% + 2, B
+                LINE (X1%, Y1%)-(X2%, Y2%), I% + 2, BF
             NEXT I%
             PRINT "Bar chart"
             """

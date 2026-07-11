@@ -62,6 +62,9 @@ struct RetroIDEView: View {
         .sheet(isPresented: $viewModel.showAbout) {
             AboutView()
         }
+        .sheet(isPresented: $viewModel.showFindPanel) {
+            FindPanelView(viewModel: viewModel)
+        }
         .fileImporter(
             isPresented: $viewModel.showOpenFilePicker,
             allowedContentTypes: [.basicProgram, .plainText],
@@ -204,5 +207,42 @@ private struct InputPromptOverlay: View {
             .padding(.horizontal, compactLayout ? 12 : 24)
         }
         .onAppear { fieldFocused = true }
+    }
+}
+
+private struct FindPanelView: View {
+    @ObservedObject var viewModel: IDEViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Find") {
+                    TextField("Find", text: $viewModel.findQuery)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("findQuery")
+                    TextField("Replace with", text: $viewModel.findReplaceText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+                if !viewModel.findStatus.isEmpty {
+                    Text(viewModel.findStatus)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Find")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Find Next") { viewModel.findNext() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Replace") { viewModel.replaceNext() }
+                }
+            }
+        }
     }
 }

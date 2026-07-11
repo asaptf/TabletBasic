@@ -11,8 +11,9 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: WV9GF23FQM
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "2026070301"
+    CURRENT_PROJECT_VERSION: "2026070302"
 targets:
   TabletBasic:
     type: application
@@ -34,8 +35,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: YES
-        CODE_SIGN_STYLE: Manual
-        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
     info:
       path: QuickBasic/Info.plist

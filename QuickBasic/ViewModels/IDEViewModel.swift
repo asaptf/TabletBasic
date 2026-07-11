@@ -24,11 +24,22 @@ final class IDEViewModel: ObservableObject {
     @Published var showInputPrompt: Bool = false
     @Published var inputPromptText: String = ""
     @Published var inputPromptValue: String = ""
+    @Published var findQuery: String = ""
+    @Published var findReplaceText: String = ""
+    @Published var showFindPanel: Bool = false
+    @Published var findStatus: String = ""
+    @Published var breakpoints: Set<Int> = []
+    @Published var watchList: [String] = []
+    @Published var watchValues: [String: String] = [:]
+    @Published var isPaused: Bool = false
+    @Published var debugEnabled: Bool = false
+    @Published var stepMode: Bool = false
 
     private let interpreter = QBInterpreter()
     private var inputContinuation: CheckedContinuation<String, Never>?
     private let consoleOutput = ConsoleOutputHandler()
     private var documentBookmark: Data?
+    private var findCursor: String.Index?
 
     var screen: ScreenBuffer { interpreter.screen }
     var hasGraphicsOutput: Bool { screen.isGraphicsMode }
@@ -57,22 +68,150 @@ final class IDEViewModel: ObservableObject {
         guard !isRunning else { return }
         cancelPendingInput()
         isRunning = true
+        isPaused = false
         showRunOutput = true
         showWelcome = false
         outputText = ""
         consoleOutput.clear()
         interpreter.screen.reset()
         screenRevision += 1
+        interpreter.breakpoints = breakpoints
+        interpreter.watches = watchList
+        interpreter.debugEnabled = debugEnabled || stepMode || !breakpoints.isEmpty
+        interpreter.stepMode = stepMode
 
         Task {
+            // Poll pause state for UI while running
+            let poll = Task { @MainActor in
+                while isRunning {
+                    isPaused = interpreter.isPaused
+                    if interpreter.isPaused {
+                        watchValues = interpreter.watchSnapshot()
+                        statusMessage = "Paused at line \(interpreter.currentSourceLine)"
+                    }
+                    try? await Task.sleep(nanoseconds: 50_000_000)
+                }
+            }
             await interpreter.run(preparedSource)
+            poll.cancel()
             outputText = consoleOutput.buffer
             screenRevision += 1
             isRunning = false
+            isPaused = false
+            watchValues = interpreter.watchSnapshot()
             if let error = interpreter.lastError {
                 statusMessage = error
+            } else {
+                statusMessage = "Ready"
             }
         }
+    }
+
+    func stopProgram() {
+        interpreter.stop()
+        cancelPendingInput()
+        statusMessage = "Stopping…"
+    }
+
+    func stepProgram() {
+        if isRunning && isPaused {
+            interpreter.stepMode = true
+            interpreter.resumeStep()
+            return
+        }
+        stepMode = true
+        debugEnabled = true
+        runProgram()
+    }
+
+    func continueProgram() {
+        if isRunning && isPaused {
+            interpreter.continueRunning()
+            statusMessage = "Continuing…"
+        }
+    }
+
+    func toggleBreakpointAtCursor() {
+        let line = cursorLine
+        if breakpoints.contains(line) {
+            breakpoints.remove(line)
+            statusMessage = "Breakpoint cleared at \(line)"
+        } else {
+            breakpoints.insert(line)
+            statusMessage = "Breakpoint set at \(line)"
+        }
+        interpreter.breakpoints = breakpoints
+    }
+
+    func addWatch(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let key = trimmed.uppercased()
+        if !watchList.contains(where: { $0.uppercased() == key }) {
+            watchList.append(trimmed)
+        }
+        interpreter.watches = watchList
+        watchValues = interpreter.watchSnapshot()
+    }
+
+    func injectKey(_ key: String) {
+        interpreter.injectKey(key)
+    }
+
+    // MARK: - Find / Replace
+
+    func openFind() {
+        showFindPanel = true
+        findStatus = ""
+        findCursor = nil
+    }
+
+    func findNext() {
+        let query = findQuery
+        guard !query.isEmpty else {
+            findStatus = "Enter search text"
+            return
+        }
+        let source = sourceCode
+        let start = findCursor ?? source.startIndex
+        let searchRange = start..<source.endIndex
+        if let range = source.range(of: query, options: [.caseInsensitive], range: searchRange) {
+            findCursor = range.upperBound
+            updateCursorFromIndex(range.lowerBound, in: source)
+            findStatus = "Found at line \(cursorLine)"
+            return
+        }
+        // Wrap
+        if let range = source.range(of: query, options: [.caseInsensitive]) {
+            findCursor = range.upperBound
+            updateCursorFromIndex(range.lowerBound, in: source)
+            findStatus = "Found at line \(cursorLine) (wrapped)"
+            return
+        }
+        findStatus = "Not found"
+    }
+
+    func replaceNext() {
+        let query = findQuery
+        guard !query.isEmpty else { return }
+        let source = sourceCode
+        let start = findCursor ?? source.startIndex
+        if let range = source.range(of: query, options: [.caseInsensitive], range: start..<source.endIndex)
+            ?? source.range(of: query, options: [.caseInsensitive]) {
+            sourceCode.replaceSubrange(range, with: findReplaceText)
+            findCursor = sourceCode.index(range.lowerBound, offsetBy: findReplaceText.count, limitedBy: sourceCode.endIndex)
+            findStatus = "Replaced"
+            findNext()
+        } else {
+            findStatus = "Not found"
+        }
+    }
+
+    private func updateCursorFromIndex(_ index: String.Index, in source: String) {
+        let prefix = source[..<index]
+        let lines = prefix.split(separator: "\n", omittingEmptySubsequences: false)
+        cursorLine = max(1, lines.count)
+        cursorColumn = (lines.last?.count ?? 0) + 1
     }
 
     func runImmediate() {
@@ -261,9 +400,22 @@ final class IDEViewModel: ObservableObject {
     func handleShortcut(_ action: IDEAction) {
         switch action {
         case .run:
+            stepMode = false
             runProgram()
         case .runImmediate:
             runImmediate()
+        case .stop:
+            stopProgram()
+        case .step:
+            stepProgram()
+        case .continueRun:
+            continueProgram()
+        case .toggleBreakpoint:
+            toggleBreakpointAtCursor()
+        case .find:
+            openFind()
+        case .findNext:
+            findNext()
         case .help:
             showHelp = true
         case .survivalGuide:
@@ -331,6 +483,12 @@ final class IDEViewModel: ObservableObject {
 enum IDEAction: String {
     case run
     case runImmediate
+    case stop
+    case step
+    case continueRun
+    case toggleBreakpoint
+    case find
+    case findNext
     case help
     case survivalGuide
     case clear

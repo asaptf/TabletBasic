@@ -1,4 +1,4 @@
-TabletBasic is a retro BASIC learning environment for iPhone and iPad.
+TabletBasic is a retro BASIC learning environment.
 
 Inspired by Microsoft QuickBASIC, TabletBasic brings back the fast, friendly learning loop that made classic BASIC such a great way to start programming: type a few lines, run them immediately, see what happens, and try again.
 
@@ -10,6 +10,6 @@ Designed for learning:
 - Learn variables, loops, conditions, subroutines, arrays, data, random numbers, and expressions.
 - Draw simple graphics with SCREEN, LINE, CIRCLE, PSET, and COLOR.
 
-TabletBasic includes a native Swift interpreter and a clean iPhone and iPad interface inspired by classic DOS programming tools. It is not an emulator. It is a modern educational environment for experimenting with a practical, readable programming language.
+TabletBasic includes a native Swift interpreter and a clean interface inspired by classic DOS programming tools. It is not an emulator. It is a modern educational environment for experimenting with a practical, readable programming language.
 
 TabletBasic is an independent project and is not affiliated with, endorsed by, or sponsored by Microsoft.

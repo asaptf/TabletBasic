@@ -1,1 +1,1 @@
-basic,programming,coding,education,interpreter,retro,learn,iphone,ipad,ios,graphics
+basic,programming,coding,education,interpreter,retro,learn,graphics,beginner,samples

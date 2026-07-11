@@ -232,6 +232,50 @@ final class TabletBasicTests: XCTestCase {
     }
 
     @MainActor
+    func testFindLocatesTextAndUpdatesCursor() {
+        let viewModel = IDEViewModel()
+        viewModel.sourceCode = """
+        PRINT "Hello"
+        PRINT "World"
+        X = 1
+        """
+        viewModel.openFind()
+        viewModel.findQuery = "World"
+        viewModel.findNext()
+        XCTAssertEqual(viewModel.cursorLine, 2)
+        XCTAssertTrue(viewModel.findStatus.contains("Found"))
+
+        viewModel.openFind()
+        viewModel.findQuery = "Hello"
+        viewModel.findReplaceText = "Hi"
+        viewModel.replaceNext()
+        XCTAssertTrue(viewModel.sourceCode.contains("Hi"))
+        XCTAssertFalse(viewModel.sourceCode.contains("Hello"))
+    }
+
+    @MainActor
+    func testStopAndBreakpointAPIs() async throws {
+        let viewModel = IDEViewModel()
+        viewModel.sourceCode = """
+        DO
+          SLEEP 0.05
+        LOOP
+        PRINT "NEVER"
+        """
+        viewModel.cursorLine = 2
+        viewModel.toggleBreakpointAtCursor()
+        XCTAssertTrue(viewModel.breakpoints.contains(2))
+        viewModel.addWatch("X%")
+        XCTAssertTrue(viewModel.watchList.contains("X%"))
+
+        viewModel.runProgram()
+        try await Task.sleep(nanoseconds: 80_000_000)
+        viewModel.stopProgram()
+        try await waitForProgramFinish(viewModel)
+        XCTAssertFalse(viewModel.outputText.contains("NEVER"))
+    }
+
+    @MainActor
     private func waitForProgramFinish(_ viewModel: IDEViewModel) async throws {
         for _ in 0..<50 {
             if !viewModel.isRunning { return }

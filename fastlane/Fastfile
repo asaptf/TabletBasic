@@ -1,33 +1,99 @@
 default_platform(:ios)
 
+ROOT = File.expand_path("..", __dir__)
+
+def deliver_api_key
+  key_id = ENV["ASC_KEY_ID"] || ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"]
+  issuer_id = ENV["ASC_ISSUER_ID"] || ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
+  key_filepath = ENV["ASC_KEY_PATH"] || ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"]
+
+  # Default to the local App Store Connect private key if present.
+  if key_filepath.nil? || key_filepath.empty?
+    default_key = Dir.glob(File.expand_path("~/.appstoreconnect/private_keys/AuthKey_*.p8")).first
+    if default_key
+      key_filepath = default_key
+      key_id ||= File.basename(default_key)[/AuthKey_(.+)\.p8/, 1]
+    end
+  end
+
+  return nil unless key_id && key_filepath
+
+  options = {
+    key_id: key_id,
+    key_filepath: key_filepath
+  }
+  # Team keys need issuer_id; individual keys leave it nil.
+  options[:issuer_id] = issuer_id if issuer_id && !issuer_id.empty?
+
+  app_store_connect_api_key(**options)
+end
+
+def base_deliver_options
+  options = {
+    app_identifier: "com.tabletbasic.app",
+    metadata_path: "fastlane/metadata",
+    screenshots_path: "fastlane/screenshots",
+    overwrite_screenshots: true,
+    submit_for_review: false,
+    force: true,
+    run_precheck_before_submit: false
+  }
+  api_key = deliver_api_key
+  options[:api_key] = api_key if api_key
+  options
+end
+
 platform :ios do
   desc "Regenerate local App Store screenshots and marketing assets"
   lane :screenshots do
     sh("python3 fastlane/scripts/generate_store_assets.py")
   end
 
+  desc "Upload App Store metadata only (no binary, no screenshots)"
+  lane :upload_metadata do
+    deliver(
+      **base_deliver_options,
+      skip_binary_upload: true,
+      skip_screenshots: true
+    )
+  end
+
   desc "Upload App Store metadata and screenshots only"
   lane :upload_store_assets do
     screenshots
     deliver(
-      app_identifier: "com.tabletbasic.app",
-      metadata_path: "fastlane/metadata",
-      screenshots_path: "fastlane/screenshots",
-      skip_binary_upload: true,
-      overwrite_screenshots: true,
-      submit_for_review: false,
-      force: false
+      **base_deliver_options,
+      skip_binary_upload: true
     )
   end
 
   desc "Build an App Store archive"
   lane :build_release do
+    sh("xcodegen generate --spec '#{File.join(ROOT, "project.yml")}'")
     build_app(
-      project: "TabletBasic.xcodeproj",
+      project: File.join(ROOT, "TabletBasic.xcodeproj"),
       scheme: "TabletBasic",
       export_method: "app-store",
-      output_directory: "fastlane/build",
+      output_directory: File.join(ROOT, "fastlane/build"),
+      export_options: {
+        method: "app-store-connect",
+        provisioningProfiles: {
+          "com.tabletbasic.app" => "com.tabletbasic.app AppStore"
+        }
+      },
+      xcargs: "-allowProvisioningUpdates",
       clean: true
+    )
+  end
+
+  desc "Build and upload App Store binary without metadata or screenshots"
+  lane :upload_binary do
+    build_release
+    deliver(
+      **base_deliver_options,
+      skip_metadata: true,
+      skip_screenshots: true,
+      skip_binary_upload: false
     )
   end
 
@@ -35,13 +101,6 @@ platform :ios do
   lane :release do
     screenshots
     build_release
-    deliver(
-      app_identifier: "com.tabletbasic.app",
-      metadata_path: "fastlane/metadata",
-      screenshots_path: "fastlane/screenshots",
-      overwrite_screenshots: true,
-      submit_for_review: false,
-      force: false
-    )
+    deliver(**base_deliver_options)
   end
 end

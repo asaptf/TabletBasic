@@ -1,7 +1,13 @@
 import Foundation
 
-public enum QBType: String, Sendable {
+public enum QBType: Sendable, Equatable, Hashable {
     case integer, long, single, double, string, variant
+    case userType(String)
+}
+
+public enum JumpTarget: Sendable, Equatable {
+    case lineNumber(Int)
+    case label(String)
 }
 
 public indirect enum Expr: Sendable {
@@ -9,6 +15,7 @@ public indirect enum Expr: Sendable {
     case float(Double)
     case string(String)
     case variable(String, QBType)
+    case fieldAccess(Expr, String)
     case unary(UnaryOp, Expr)
     case binary(BinaryOp, Expr, Expr)
     case function(String, [Expr])
@@ -29,6 +36,7 @@ public enum PrintItem: Sendable {
     case separator(Separator)
     case tab(Expr?)
     case spc(Int)
+    case using(format: String, values: [Expr])
 }
 
 public enum Separator: Sendable {
@@ -57,10 +65,42 @@ public struct CaseClause: Sendable {
     }
 }
 
+public struct TypeField: Sendable, Equatable {
+    public let name: String
+    public let type: QBType
+
+    public init(name: String, type: QBType) {
+        self.name = name.uppercased()
+        self.type = type
+    }
+}
+
+public struct TypeDef: Sendable, Equatable {
+    public let name: String
+    public let fields: [TypeField]
+
+    public init(name: String, fields: [TypeField]) {
+        self.name = name.uppercased()
+        self.fields = fields
+    }
+}
+
+public enum LineBoxStyle: Sendable, Equatable {
+    case none
+    case box
+    case filled
+}
+
+public enum FileMode: String, Sendable {
+    case input, output, append, random
+}
+
 public indirect enum Statement: Sendable {
     case rem(String)
     case print([PrintItem])
+    case printUsing(String, [Expr])
     case input([String], [Expr]?)
+    case lineInput(String?, Expr)
     case letStmt(Expr, Expr)
     case ifStmt(Expr, [Statement], [Statement]?)
     case forLoop(String, QBType, Expr, Expr, Expr?, [Statement])
@@ -70,26 +110,45 @@ public indirect enum Statement: Sendable {
     case doLoop(DoMode, Expr?, [Statement])
     case loop(DoMode?)
     case exitFor, exitDo, exitWhile
-    case goto(Int)
-    case gosub(Int)
+    case goto(JumpTarget)
+    case gosub(JumpTarget)
     case `return`
     case end, stop
     case dim(String, QBType, [Expr])
+    case dimAs(String, QBType, [Expr])
     case defType(QBType, String, String?)
     case data([Expr])
     case read([Expr])
     case restore(Expr?)
-    case onGoto(Expr, [Int])
-    case onGosub(Expr, [Int])
+    case onGoto(Expr, [JumpTarget])
+    case onGosub(Expr, [JumpTarget])
     case randomize(Expr?)
     case cls
     case screen(Expr, Expr?, Expr?)
     case color(Expr, Expr?, Expr?)
+    case locate(Expr, Expr?)
     case pset(Expr, Expr, Expr?)
     case preset(Expr, Expr, Expr?)
-    case line(Expr, Expr, Expr?, Expr?, Expr?, Bool)
+    case line(Expr, Expr, Expr?, Expr?, Expr?, LineBoxStyle)
     case circle(Expr, Expr, Expr, Expr?, Expr?, Expr?)
-
+    case paint(Expr, Expr, Expr?, Expr?)
+    case draw(Expr)
+    case getSprite(Expr, Expr, Expr, Expr, String)
+    case putSprite(Expr, Expr, String)
+    case constDecl([(String, QBType, Expr)])
+    case swap(Expr, Expr)
+    case optionBase(Int)
+    case label(String)
+    case midAssign(Expr, Expr, Expr?, Expr)
+    case open(String, FileMode, Int)
+    case close([Int]?)
+    case printHash(Int, [PrintItem])
+    case inputHash(Int, [Expr])
+    case lineInputHash(Int, Expr)
+    case shared([String])
+    case `static`([String])
+    case declare(String, ProcedureKind)
+    case typeDef(TypeDef)
     case beep
     case sleep(Expr)
     case assign(Expr, Expr)
@@ -120,17 +179,31 @@ public struct ProgramLine: Sendable {
 public struct ParsedProgram: Sendable {
     public let lines: [ProgramLine]
     public let lineIndex: [Int: Int]
+    public let labelIndex: [String: Int]
     public let procedures: [String: ProcedureDef]
+    public let typeDefs: [String: TypeDef]
 
-    public init(lines: [ProgramLine], procedures: [String: ProcedureDef] = [:]) {
+    public init(
+        lines: [ProgramLine],
+        procedures: [String: ProcedureDef] = [:],
+        typeDefs: [String: TypeDef] = [:]
+    ) {
         self.lines = lines
         self.procedures = procedures
+        self.typeDefs = typeDefs
         var index: [Int: Int] = [:]
+        var labels: [String: Int] = [:]
         for (i, line) in lines.enumerated() {
             if let num = line.lineNumber {
                 index[num] = i
             }
+            for statement in line.statements {
+                if case .label(let name) = statement {
+                    labels[name.uppercased()] = i
+                }
+            }
         }
         self.lineIndex = index
+        self.labelIndex = labels
     }
 }

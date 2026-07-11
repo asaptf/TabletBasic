@@ -7,6 +7,7 @@ public enum QBValue: Sendable, Equatable {
     case double(Double)
     case string(String)
     case bool(Bool)
+    case record(typeName: String, fields: [String: QBValue])
 
     public var asDouble: Double {
         switch self {
@@ -16,6 +17,7 @@ public enum QBValue: Sendable, Equatable {
         case .double(let v): return v
         case .string(let v): return Double(v) ?? 0
         case .bool(let v): return v ? -1 : 0
+        case .record: return 0
         }
     }
 
@@ -27,6 +29,7 @@ public enum QBValue: Sendable, Equatable {
         case .double(let v): return Int(v)
         case .string(let v): return Int(v) ?? 0
         case .bool(let v): return v ? -1 : 0
+        case .record: return 0
         }
     }
 
@@ -38,6 +41,7 @@ public enum QBValue: Sendable, Equatable {
         case .double(let v): return String(v)
         case .string(let v): return v
         case .bool(let v): return v ? "-1" : "0"
+        case .record(let typeName, _): return "{\(typeName)}"
         }
     }
 
@@ -49,6 +53,7 @@ public enum QBValue: Sendable, Equatable {
         case .single(let v): return v != 0
         case .double(let v): return v != 0
         case .string(let v): return !v.isEmpty && v != "0"
+        case .record: return true
         }
     }
 
@@ -60,6 +65,7 @@ public enum QBValue: Sendable, Equatable {
         case .double: return .double(value)
         case .string: return .string(String(value))
         case .variant: return value.rounded() == value ? .integer(Int(value)) : .single(value)
+        case .userType: return .integer(Int(value))
         }
     }
 

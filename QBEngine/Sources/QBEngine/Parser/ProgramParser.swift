@@ -7,28 +7,31 @@ public struct ProgramParser {
     public init() {}
 
     public mutating func parse(source: String) throws -> ParsedProgram {
-        let physicalLines = source
+        let rawLines = source
             .replacingOccurrences(of: "\r\n", with: "\n")
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
 
-        let (mainLines, procedureDefs) = try ProcedureExtractor.extract(from: physicalLines)
+        let (afterTypes, typeDefs) = try TypeExtractor.extract(from: rawLines)
+        let (mainLines, procedureDefs) = try ProcedureExtractor.extract(from: afterTypes)
         let procedureMap = Dictionary(
             uniqueKeysWithValues: procedureDefs.map { ($0.name.uppercased(), $0) }
         )
+        let typeMap = Dictionary(uniqueKeysWithValues: typeDefs.map { ($0.name.uppercased(), $0) })
         activeProcedures = Set(procedureMap.keys)
         activeFunctions = Set(
             procedureMap.values
                 .filter { $0.kind == .function }
                 .map(\.name)
         )
-        let programLines = try parsePhysicalLines(mainLines, lineOffset: 0)
-        return ParsedProgram(lines: programLines, procedures: procedureMap)
+        // DECLARE lines are no-ops; still parse as statements when present in main
+        let programLines = try parsePhysicalLines(mainLines)
+        return ParsedProgram(lines: programLines, procedures: procedureMap, typeDefs: typeMap)
     }
 
+    /// Parses lines that already carry original 1-based physical `sourceLine` values.
     mutating func parsePhysicalLines(
-        _ physicalLines: [String],
-        lineOffset: Int,
+        _ physicalLines: [PhysicalLine],
         knownProcedures: Set<String>? = nil,
         knownFunctions: Set<String>? = nil
     ) throws -> [ProgramLine] {
@@ -47,7 +50,8 @@ public struct ProgramParser {
         var programLines: [ProgramLine] = []
         var index = 0
         while index < physicalLines.count {
-            let trimmed = physicalLines[index].trimmingCharacters(in: .whitespaces)
+            let current = physicalLines[index]
+            let trimmed = current.text.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty {
                 index += 1
                 continue
@@ -68,20 +72,19 @@ public struct ProgramParser {
             if ControlBlockFolder.isBlockIfStart(trimmed) {
                 let (statement, consumed) = try parseIfBlock(physicalLines, start: index)
                 programLines.append(
-                    ProgramLine(lineNumber: nil, statements: [statement], sourceLine: index + 1)
+                    ProgramLine(lineNumber: nil, statements: [statement], sourceLine: current.sourceLine)
                 )
                 index += consumed
                 continue
             }
 
-            let physicalLine = physicalLines[index]
-            let foldedTrimmed = physicalLine.trimmingCharacters(in: .whitespaces)
+            let foldedTrimmed = current.text.trimmingCharacters(in: .whitespaces)
             if foldedTrimmed.isEmpty {
                 index += 1
                 continue
             }
 
-            var lexer = Lexer(source: physicalLine)
+            var lexer = Lexer(source: current.text)
             let tokens = lexer.tokenize().filter { token in
                 if case .newline = token.kind { return false }
                 if case .eof = token.kind { return false }
@@ -95,7 +98,7 @@ public struct ProgramParser {
 
             var parser = LineParser(
                 tokens: tokens,
-                sourceLine: lineOffset + index + 1,
+                sourceLine: current.sourceLine,
                 knownProcedures: activeProcedures,
                 knownFunctions: activeFunctions
             )
@@ -107,19 +110,21 @@ public struct ProgramParser {
         return programLines
     }
 
-    func parseIfBlock(_ lines: [String], start: Int) throws -> (Statement, Int) {
-        let header = lines[start].trimmingCharacters(in: .whitespaces)
+    func parseIfBlock(_ lines: [PhysicalLine], start: Int) throws -> (Statement, Int) {
+        let headerLine = lines[start]
+        let header = headerLine.text.trimmingCharacters(in: .whitespaces)
         let headerTokens = tokenizeLine(header)
-        var headerParser = LineParser(tokens: headerTokens, sourceLine: start + 1)
+        var headerParser = LineParser(tokens: headerTokens, sourceLine: headerLine.sourceLine)
         let condition = try headerParser.parseIfHeaderCondition()
 
-        var thenLines: [String] = []
-        var elseLines: [String] = []
+        var thenLines: [PhysicalLine] = []
+        var elseLines: [PhysicalLine] = []
         var index = start + 1
         var inElse = false
 
         while index < lines.count {
-            let trimmed = lines[index].trimmingCharacters(in: .whitespaces)
+            let line = lines[index]
+            let trimmed = line.text.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty {
                 index += 1
                 continue
@@ -136,52 +141,55 @@ public struct ProgramParser {
                 if upper.hasPrefix("ELSE ") {
                     let afterElse = trimmed.dropFirst(5).trimmingCharacters(in: .whitespaces)
                     if !afterElse.isEmpty {
-                        elseLines.append(String(afterElse))
+                        elseLines.append(PhysicalLine(text: String(afterElse), sourceLine: line.sourceLine))
                     }
                 } else if upper.hasPrefix("ELSEIF ") {
-                    elseLines.append(trimmed)
+                    elseLines.append(PhysicalLine(text: trimmed, sourceLine: line.sourceLine))
                 }
                 index += 1
                 continue
             }
 
             if inElse {
-                elseLines.append(trimmed)
+                elseLines.append(PhysicalLine(text: trimmed, sourceLine: line.sourceLine))
             } else {
-                thenLines.append(trimmed)
+                thenLines.append(PhysicalLine(text: trimmed, sourceLine: line.sourceLine))
             }
             index += 1
         }
 
-        let thenStatements = try parseStatementLines(thenLines, sourceLine: start + 2)
-        let elseStatements = elseLines.isEmpty ? nil : try parseStatementLines(elseLines, sourceLine: start + 2)
+        let thenStatements = try parseStatementPhysicalLines(thenLines)
+        let elseStatements = elseLines.isEmpty ? nil : try parseStatementPhysicalLines(elseLines)
         return (.ifStmt(condition, thenStatements, elseStatements), index - start)
     }
 
     private func parseSelectCaseBlock(
-        _ lines: [String],
+        _ lines: [PhysicalLine],
         start: Int
     ) throws -> (Statement, Int, Int) {
-        let header = lines[start].trimmingCharacters(in: .whitespaces)
+        let headerLine = lines[start]
+        let header = headerLine.text.trimmingCharacters(in: .whitespaces)
         let headerTokens = tokenizeLine(header)
-        var headerParser = LineParser(tokens: headerTokens, sourceLine: start + 1)
+        var headerParser = LineParser(tokens: headerTokens, sourceLine: headerLine.sourceLine)
         let selector = try headerParser.parseSelectCaseHeader()
 
         var clauses: [CaseClause] = []
         var index = start + 1
-        var currentCaseLines: [String] = []
+        var currentCaseLines: [PhysicalLine] = []
         var currentCaseHeader: String?
+        var currentCaseSourceLine = headerLine.sourceLine
 
         func flushCase() throws {
-            guard let headerLine = currentCaseHeader else { return }
-            let statements = try parseStatementLines(currentCaseLines, sourceLine: index)
-            clauses.append(try parseCaseClause(header: headerLine, statements: statements))
+            guard let headerText = currentCaseHeader else { return }
+            let statements = try parseStatementPhysicalLines(currentCaseLines)
+            clauses.append(try parseCaseClause(header: headerText, statements: statements))
             currentCaseHeader = nil
             currentCaseLines = []
         }
 
         while index < lines.count {
-            let trimmed = lines[index].trimmingCharacters(in: .whitespaces)
+            let line = lines[index]
+            let trimmed = line.text.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty {
                 index += 1
                 continue
@@ -197,15 +205,34 @@ public struct ProgramParser {
             if upper.hasPrefix("CASE ") || upper == "CASE ELSE" {
                 try flushCase()
                 currentCaseHeader = trimmed
+                currentCaseSourceLine = line.sourceLine
                 index += 1
                 continue
             }
 
-            currentCaseLines.append(trimmed)
+            currentCaseLines.append(PhysicalLine(text: trimmed, sourceLine: line.sourceLine))
             index += 1
         }
 
-        return (.selectCase(selector, clauses), index - start, start + 1)
+        _ = currentCaseSourceLine
+        return (.selectCase(selector, clauses), index - start, headerLine.sourceLine)
+    }
+
+    private func parseStatementPhysicalLines(_ lines: [PhysicalLine]) throws -> [Statement] {
+        var statements: [Statement] = []
+        for line in lines {
+            let tokens = tokenizeLine(line.text)
+            var parser = LineParser(
+                tokens: tokens,
+                sourceLine: line.sourceLine,
+                knownProcedures: activeProcedures,
+                knownFunctions: activeFunctions
+            )
+            repeat {
+                statements.append(try parser.parseStatement())
+            } while parser.takeColonIfPresent()
+        }
+        return statements
     }
 
     private func parseCaseClause(header: String, statements: [Statement]) throws -> CaseClause {
@@ -243,23 +270,6 @@ public struct ProgramParser {
             values.append(try parser.parseExpression())
         } while parser.takeCommaIfPresent()
         return values
-    }
-
-    private func parseStatementLines(_ lines: [String], sourceLine: Int) throws -> [Statement] {
-        var statements: [Statement] = []
-        for (offset, line) in lines.enumerated() {
-            let tokens = tokenizeLine(line)
-            var parser = LineParser(
-                tokens: tokens,
-                sourceLine: sourceLine + offset,
-                knownProcedures: activeProcedures,
-                knownFunctions: activeFunctions
-            )
-            repeat {
-                statements.append(try parser.parseStatement())
-            } while parser.takeColonIfPresent()
-        }
-        return statements
     }
 
     private func tokenizeLine(_ source: String) -> [Token] {
@@ -332,12 +342,67 @@ private struct LineParser {
 
         if case .keyword(.print) = token.kind {
             advance()
+            if matchKeyword(.using) {
+                guard case .string(let format)? = peek()?.kind else {
+                    throw QBError.syntax("Expected format string after PRINT USING")
+                }
+                advance()
+                _ = match(.semicolon)
+                var values: [Expr] = []
+                if !isAtEnd() && !check(.colon) {
+                    values.append(try parseExpression())
+                    while match(.comma) {
+                        values.append(try parseExpression())
+                    }
+                }
+                return .printUsing(format, values)
+            }
+            // PRINT #n, ...
+            if case .integer(let handle)? = peek()?.kind {
+                advance()
+                _ = match(.comma)
+                return .printHash(handle, try parsePrintList())
+            }
             return .print(try parsePrintList())
         }
 
         if case .keyword(.input) = token.kind {
             advance()
+            // INPUT #n, varlist
+            if case .integer(let handle)? = peek()?.kind {
+                advance()
+                _ = match(.comma)
+                return .inputHash(handle, try parseVariableList())
+            }
             return try parseInput()
+        }
+
+        // LINE INPUT #n, var
+        if case .keyword(.line) = token.kind,
+           let next = tokens[safe: pos + 1], case .keyword(.input) = next.kind,
+           let third = tokens[safe: pos + 2], case .integer(let handle) = third.kind {
+            advance() // LINE
+            advance() // INPUT
+            advance() // handle
+            _ = match(.comma)
+            let target = try parseAssignable()
+            return .lineInputHash(handle, target)
+        }
+
+        if case .keyword(.line) = token.kind {
+            // LINE INPUT or LINE graphics
+            if let next = tokens[safe: pos + 1], case .keyword(.input) = next.kind {
+                advance() // LINE
+                advance() // INPUT
+                var prompt: String?
+                if case .string(let p)? = peek()?.kind {
+                    advance()
+                    prompt = p
+                    _ = match(.semicolon)
+                }
+                let target = try parseAssignable()
+                return .lineInput(prompt, target)
+            }
         }
 
         if case .keyword(.if) = token.kind {
@@ -401,14 +466,12 @@ private struct LineParser {
 
         if case .keyword(.goto) = token.kind {
             advance()
-            let target = try parseLineTarget()
-            return .goto(target)
+            return .goto(try parseJumpTarget())
         }
 
         if case .keyword(.gosub) = token.kind {
             advance()
-            let target = try parseLineTarget()
-            return .gosub(target)
+            return .gosub(try parseJumpTarget())
         }
 
         if case .keyword(.return) = token.kind {
@@ -428,6 +491,173 @@ private struct LineParser {
 
         if case .keyword(.dim) = token.kind {
             return try parseDim()
+        }
+
+        if case .keyword(.const) = token.kind {
+            return try parseConst()
+        }
+
+        if case .keyword(.swap) = token.kind {
+            advance()
+            let a = try parseAssignable()
+            try consume(.comma, message: "Expected ',' in SWAP")
+            let b = try parseAssignable()
+            return .swap(a, b)
+        }
+
+        if case .keyword(.option) = token.kind {
+            advance()
+            // OPTION BASE n
+            if case .identifier(let raw)? = peek()?.kind, raw.uppercased() == "BASE" {
+                advance()
+            } else if case .keyword = peek()?.kind {
+                // ignore
+            }
+            let base = try parseExpression()
+            if case .integer(let n) = base {
+                return .optionBase(n)
+            }
+            throw QBError.syntax("OPTION BASE requires integer")
+        }
+
+        if case .keyword(.locate) = token.kind {
+            advance()
+            let row = try parseExpression()
+            var col: Expr?
+            if match(.comma) {
+                col = try parseExpression()
+            }
+            return .locate(row, col)
+        }
+
+        if case .keyword(.open) = token.kind {
+            return try parseOpen()
+        }
+
+        if case .keyword(.close) = token.kind {
+            advance()
+            if isAtEnd() || check(.colon) {
+                return .close(nil)
+            }
+            var handles: [Int] = []
+            repeat {
+                if case .integer(let n)? = peek()?.kind {
+                    advance()
+                    handles.append(n)
+                } else if case .identifier(let raw)? = peek()?.kind, raw.hasPrefix("#"),
+                          let n = Int(raw.dropFirst()) {
+                    advance()
+                    handles.append(n)
+                } else {
+                    break
+                }
+            } while match(.comma)
+            return .close(handles.isEmpty ? nil : handles)
+        }
+
+        if case .keyword(.paint) = token.kind {
+            advance()
+            try consume(.lparen, message: "Expected '(' after PAINT")
+            let x = try parseExpression()
+            try consume(.comma, message: "Expected ','")
+            let y = try parseExpression()
+            try consume(.rparen, message: "Expected ')'")
+            var paintColor: Expr?
+            var border: Expr?
+            if match(.comma) {
+                paintColor = try parseExpression()
+                if match(.comma) {
+                    border = try parseExpression()
+                }
+            }
+            return .paint(x, y, paintColor, border)
+        }
+
+        if case .keyword(.draw) = token.kind {
+            advance()
+            return .draw(try parseExpression())
+        }
+
+        if case .keyword(.get) = token.kind {
+            advance()
+            try consume(.lparen, message: "Expected '(' after GET")
+            let x1 = try parseExpression()
+            try consume(.comma, message: "Expected ','")
+            let y1 = try parseExpression()
+            try consume(.rparen, message: "Expected ')'")
+            try consume(.minus, message: "Expected '-' in GET")
+            try consume(.lparen, message: "Expected '('")
+            let x2 = try parseExpression()
+            try consume(.comma, message: "Expected ','")
+            let y2 = try parseExpression()
+            try consume(.rparen, message: "Expected ')'")
+            try consume(.comma, message: "Expected ',' before array name")
+            guard case .identifier(let rawName)? = peek()?.kind else {
+                throw QBError.syntax("Expected sprite name in GET")
+            }
+            advance()
+            let (name, _) = splitTypeSuffix(rawName)
+            return .getSprite(x1, y1, x2, y2, name)
+        }
+
+        if case .keyword(.put) = token.kind {
+            advance()
+            try consume(.lparen, message: "Expected '(' after PUT")
+            let x = try parseExpression()
+            try consume(.comma, message: "Expected ','")
+            let y = try parseExpression()
+            try consume(.rparen, message: "Expected ')'")
+            try consume(.comma, message: "Expected ',' before array name")
+            guard case .identifier(let rawName)? = peek()?.kind else {
+                throw QBError.syntax("Expected sprite name in PUT")
+            }
+            advance()
+            let (name, _) = splitTypeSuffix(rawName)
+            return .putSprite(x, y, name)
+        }
+
+        if case .keyword(.shared) = token.kind {
+            advance()
+            return .shared(try parseNameList())
+        }
+
+        if case .keyword(.static) = token.kind {
+            advance()
+            return .static(try parseNameList())
+        }
+
+        if case .keyword(.declare) = token.kind {
+            advance()
+            let kind: ProcedureKind
+            if matchKeyword(.sub) {
+                kind = .sub
+            } else if matchKeyword(.function) {
+                kind = .function
+            } else {
+                throw QBError.syntax("Expected SUB or FUNCTION after DECLARE")
+            }
+            guard case .identifier(let rawName)? = peek()?.kind else {
+                throw QBError.syntax("Expected procedure name after DECLARE")
+            }
+            advance()
+            let (name, _) = splitTypeSuffix(rawName)
+            // Skip rest of declare line
+            while !isAtEnd() && !check(.colon) { advance() }
+            return .declare(name, kind)
+        }
+
+        if case .keyword(.mid) = token.kind {
+            return try parseMidAssign()
+        }
+        // MID$ as identifier (dollar-suffix form)
+        if case .identifier(let rawMid) = token.kind {
+            let upperMid = rawMid.uppercased()
+            if upperMid == "MID" || upperMid == "MID$" {
+                // Only statement form if followed by '(' and later '='
+                if tokens[safe: pos + 1]?.kind == .lparen {
+                    return try parseMidAssign()
+                }
+            }
         }
 
         if case .keyword(.defint) = token.kind { return try parseDefType(.integer) }
@@ -527,6 +757,12 @@ private struct LineParser {
 
         if case .identifier(let rawName) = token.kind {
             let (name, _) = splitTypeSuffix(rawName)
+            // Named label: Foo:
+            if tokens[safe: pos + 1]?.kind == .colon {
+                advance()
+                advance() // colon
+                return .label(name)
+            }
             if knownProcedures.contains(name),
                !knownFunctions.contains(name),
                !check(.equals) {
@@ -536,6 +772,8 @@ private struct LineParser {
             }
         }
 
+        // PRINT #n, ... / INPUT #n, ... when print/input already handled —
+        // handle bare assignment including field access
         let target = try parseAssignable()
         try consumeEquals()
         let value = try parseExpression()
@@ -550,8 +788,8 @@ private struct LineParser {
         var thenStatements: [Statement] = []
         var elseStatements: [Statement]?
 
-        if let lineNum = try tryOptionalLineTarget() {
-            thenStatements = [.goto(lineNum)]
+        if let target = try tryOptionalJumpTarget() {
+            thenStatements = [.goto(target)]
         } else {
             thenStatements.append(try parseStatement())
             while !isAtEnd() && !isElseClause() {
@@ -567,8 +805,8 @@ private struct LineParser {
             }
             consumeElseKeyword()
             var elseBody: [Statement] = []
-            if let lineNum = try tryOptionalLineTarget() {
-                elseBody = [.goto(lineNum)]
+            if let target = try tryOptionalJumpTarget() {
+                elseBody = [.goto(target)]
             } else {
                 elseBody.append(try parseStatement())
                 while !isAtEnd() && !isStatementBoundary() {
@@ -622,17 +860,132 @@ private struct LineParser {
     private mutating func parseDim() throws -> Statement {
         advance()
         guard case .identifier(let rawName)? = peek()?.kind else {
-            throw QBError.syntax("Expected array name in DIM")
+            throw QBError.syntax("Expected name in DIM")
         }
         advance()
-        let (name, qbType) = splitTypeSuffix(rawName)
-        try consume(.lparen, message: "Expected '(' after array name")
+        let (name, suffixType) = splitTypeSuffix(rawName)
         var bounds: [Expr] = []
-        repeat {
-            bounds.append(try parseExpression())
-        } while match(.comma)
-        try consume(.rparen, message: "Expected ')' after DIM bounds")
+        if match(.lparen) {
+            repeat {
+                let first = try parseExpression()
+                if matchKeyword(.to) {
+                    let upper = try parseExpression()
+                    bounds.append(.function("__BOUNDS__", [first, upper]))
+                } else {
+                    bounds.append(first)
+                }
+            } while match(.comma)
+            try consume(.rparen, message: "Expected ')' after DIM bounds")
+        }
+        var qbType = suffixType
+        if matchKeyword(.as) {
+            qbType = try parseTypeName()
+            if bounds.isEmpty {
+                return .dimAs(name, qbType, [])
+            }
+            return .dimAs(name, qbType, bounds)
+        }
+        if bounds.isEmpty {
+            return .dimAs(name, qbType == .variant ? .variant : qbType, [])
+        }
         return .dim(name, qbType, bounds)
+    }
+
+    private mutating func parseTypeName() throws -> QBType {
+        if matchKeyword(.integer) { return .integer }
+        if matchKeyword(.long) { return .long }
+        if matchKeyword(.single) { return .single }
+        if matchKeyword(.double) { return .double }
+        if matchKeyword(.string) { return .string }
+        if case .identifier(let raw)? = peek()?.kind {
+            advance()
+            let (name, _) = splitTypeSuffix(raw)
+            return .userType(name)
+        }
+        throw QBError.syntax("Expected type name after AS")
+    }
+
+    private mutating func parseMidAssign() throws -> Statement {
+        advance() // MID / MID$
+        try consume(.lparen, message: "Expected '(' after MID$")
+        let target = try parseAssignable()
+        try consume(.comma, message: "Expected ','")
+        let start = try parseExpression()
+        var len: Expr?
+        if match(.comma) {
+            len = try parseExpression()
+        }
+        try consume(.rparen, message: "Expected ')'")
+        try consumeEquals()
+        let value = try parseExpression()
+        return .midAssign(target, start, len, value)
+    }
+
+    private mutating func parseConst() throws -> Statement {
+        advance()
+        var items: [(String, QBType, Expr)] = []
+        repeat {
+            guard case .identifier(let rawName)? = peek()?.kind else {
+                throw QBError.syntax("Expected constant name")
+            }
+            advance()
+            let (name, type) = splitTypeSuffix(rawName)
+            try consumeEquals()
+            let value = try parseExpression()
+            items.append((name, type, value))
+        } while match(.comma)
+        return .constDecl(items)
+    }
+
+    private mutating func parseOpen() throws -> Statement {
+        advance()
+        guard case .string(let path)? = peek()?.kind else {
+            throw QBError.syntax("Expected filename string in OPEN")
+        }
+        advance()
+        try consumeKeyword(.for)
+        let mode: FileMode
+        if matchKeyword(.input) {
+            mode = .input
+        } else if matchKeyword(.output) {
+            mode = .output
+        } else if matchKeyword(.append) {
+            mode = .append
+        } else if matchKeyword(.random) {
+            mode = .random
+        } else {
+            throw QBError.syntax("Expected INPUT, OUTPUT, APPEND, or RANDOM after FOR")
+        }
+        try consumeKeyword(.as)
+        // AS #1 or AS 1
+        if case .integer(let n)? = peek()?.kind {
+            advance()
+            return .open(path, mode, n)
+        }
+        if case .identifier(let raw)? = peek()?.kind, raw.hasPrefix("#"), let n = Int(raw.dropFirst()) {
+            advance()
+            return .open(path, mode, n)
+        }
+        // AS # with separate tokens - lexer may give identifier "#" then integer? Unlikely.
+        // Also handle keyword-less: sometimes # is not tokenized — try expression
+        let handleExpr = try parseExpression()
+        if case .integer(let n) = handleExpr {
+            return .open(path, mode, n)
+        }
+        throw QBError.syntax("Expected file number after AS")
+    }
+
+    private mutating func parseNameList() throws -> [String] {
+        var names: [String] = []
+        repeat {
+            guard case .identifier(let raw)? = peek()?.kind else {
+                throw QBError.syntax("Expected variable name")
+            }
+            advance()
+            let (name, _) = splitTypeSuffix(raw)
+            names.append(name)
+        } while match(.comma)
+        return names
     }
 
     private mutating func parseDefType(_ type: QBType) throws -> Statement {
@@ -656,20 +1009,20 @@ private struct LineParser {
         advance()
         let expr = try parseExpression()
         if matchKeyword(.goto) {
-            return .onGoto(expr, try parseLineList())
+            return .onGoto(expr, try parseJumpTargetList())
         }
         if matchKeyword(.gosub) {
-            return .onGosub(expr, try parseLineList())
+            return .onGosub(expr, try parseJumpTargetList())
         }
         throw QBError.syntax("Expected GOTO or GOSUB after ON")
     }
 
-    private mutating func parseLineList() throws -> [Int] {
-        var lines: [Int] = []
+    private mutating func parseJumpTargetList() throws -> [JumpTarget] {
+        var targets: [JumpTarget] = []
         repeat {
-            lines.append(try parseLineTarget())
+            targets.append(try parseJumpTarget())
         } while match(.comma)
-        return lines
+        return targets
     }
 
     private mutating func parseInput() throws -> Statement {
@@ -799,6 +1152,7 @@ private struct LineParser {
         }
         advance()
         let (name, qbType) = splitTypeSuffix(rawName)
+        var expr: Expr = .variable(name, qbType)
         if match(.lparen) {
             var indices: [Expr] = []
             if !check(.rparen) {
@@ -807,13 +1161,19 @@ private struct LineParser {
                 } while match(.comma)
             }
             try consume(.rparen, message: "Expected ')' after array index")
-            var expr: Expr = .variable(name, qbType)
             for index in indices {
                 expr = .function("INDEX", [expr, index])
             }
-            return expr
         }
-        return .variable(name, qbType)
+        while match(.dot) {
+            guard case .identifier(let fieldRaw)? = peek()?.kind else {
+                throw QBError.syntax("Expected field name after '.'")
+            }
+            advance()
+            let (field, _) = splitTypeSuffix(fieldRaw)
+            expr = .fieldAccess(expr, field)
+        }
+        return expr
     }
 
     private mutating func parsePointStatement(preset: Bool) throws -> Statement {
@@ -830,7 +1190,7 @@ private struct LineParser {
     }
 
     private mutating func parseLineStatement() throws -> Statement {
-        var boxed = false
+        var style: LineBoxStyle = .none
         let parenStart = match(.lparen)
         let x1 = try parseExpression()
         try consume(.comma, message: "Expected ',' in LINE")
@@ -856,17 +1216,23 @@ private struct LineParser {
         if match(.comma) {
             if let token = peek(), case .identifier(let rawName) = token.kind {
                 let flag = rawName.uppercased()
-                if flag == "B" || flag == "BF" {
+                if flag == "BF" {
                     advance()
-                    boxed = true
+                    style = .filled
+                } else if flag == "B" {
+                    advance()
+                    style = .box
                 } else {
                     color = try parseExpression()
                     if match(.comma),
                        let next = peek(), case .identifier(let boxName) = next.kind {
                         let boxFlag = boxName.uppercased()
-                        if boxFlag == "B" || boxFlag == "BF" {
+                        if boxFlag == "BF" {
                             advance()
-                            boxed = true
+                            style = .filled
+                        } else if boxFlag == "B" {
+                            advance()
+                            style = .box
                         }
                     }
                 }
@@ -875,14 +1241,17 @@ private struct LineParser {
                 if match(.comma),
                    let next = peek(), case .identifier(let boxName) = next.kind {
                     let boxFlag = boxName.uppercased()
-                    if boxFlag == "B" || boxFlag == "BF" {
+                    if boxFlag == "BF" {
                         advance()
-                        boxed = true
+                        style = .filled
+                    } else if boxFlag == "B" {
+                        advance()
+                        style = .box
                     }
                 }
             }
         }
-        return .line(x1, y1, x2, y2, color, boxed)
+        return .line(x1, y1, x2, y2, color, style)
     }
 
     private mutating func parseCircle() throws -> Statement {
@@ -908,33 +1277,40 @@ private struct LineParser {
         return .circle(x, y, radius, color, start, end)
     }
 
-    private mutating func parseLineTarget() throws -> Int {
+    private mutating func parseJumpTarget() throws -> JumpTarget {
         guard let token = peek() else {
-            throw QBError.syntax("Expected line number")
+            throw QBError.syntax("Expected line number or label")
         }
         if case .lineNumber(let num) = token.kind {
             advance()
-            return num
+            return .lineNumber(num)
         }
         if case .integer(let num) = token.kind {
             advance()
-            return num
+            return .lineNumber(num)
         }
-        throw QBError.syntax("Expected line number, got \(token.kind)")
+        if case .identifier(let raw) = token.kind {
+            advance()
+            let (name, _) = splitTypeSuffix(raw)
+            return .label(name)
+        }
+        throw QBError.syntax("Expected line number or label, got \(token.kind)")
     }
 
-    private mutating func tryOptionalLineTarget() throws -> Int? {
+    private mutating func tryOptionalJumpTarget() throws -> JumpTarget? {
         guard let token = peek() else { return nil }
         switch token.kind {
-        case .lineNumber(let num), .integer(let num):
-            if case .integer = token.kind {
-                if let next = tokens[safe: pos + 1], !isStatementStart(next) {
-                    return nil
-                }
+        case .lineNumber(let num):
+            advance()
+            return .lineNumber(num)
+        case .integer(let num):
+            if let next = tokens[safe: pos + 1], !isStatementStart(next) {
+                return nil
             }
             advance()
-            return num
+            return .lineNumber(num)
         default:
+            // Identifiers are statements (PRINT, etc.), not optional THEN targets
             return nil
         }
     }

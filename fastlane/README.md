@@ -1,49 +1,72 @@
-# Fastlane Publishing Assets
+fastlane documentation
+----
 
-This folder contains App Store metadata, iPhone/iPad screenshot assets, and
-fastlane lanes for TabletBasic.
+# Installation
 
-## Before Uploading
-
-Copy or rename the `.example` files to the matching `.txt` names and replace
-the placeholder values with real public values:
-
-- `fastlane/metadata/en-US/support_url.txt`
-- `fastlane/metadata/en-US/marketing_url.txt`, optional
-- `fastlane/metadata/en-US/privacy_url.txt`, if required for the final listing
-- `fastlane/metadata/review_information/*.txt`, if submitting for review
-
-Do not commit App Store Connect API keys, Apple ID passwords, or signing
-certificates.
-
-## Regenerate Assets
+Make sure you have the latest version of the Xcode command line tools installed:
 
 ```sh
-python3 fastlane/scripts/generate_store_assets.py
+xcode-select --install
 ```
 
-Or, after installing fastlane:
+For _fastlane_ installation instructions, see [Installing _fastlane_](https://docs.fastlane.tools/#installing-fastlane)
+
+# Available Actions
+
+## iOS
+
+### ios screenshots
 
 ```sh
-bundle install
-bundle exec fastlane ios screenshots
+[bundle exec] fastlane ios screenshots
 ```
 
-## Upload Metadata And Screenshots
+Regenerate local App Store screenshots and marketing assets
 
-Set the required account/team environment variables first:
+### ios upload_metadata
 
 ```sh
-export FASTLANE_APPLE_ID="you@example.com"
-export FASTLANE_TEAM_ID="TEAMID1234"
-export FASTLANE_ITC_TEAM_ID="123456789"
+[bundle exec] fastlane ios upload_metadata
 ```
 
-Then upload the store listing assets without uploading a binary:
+Upload App Store metadata only (no binary, no screenshots)
+
+### ios upload_store_assets
 
 ```sh
-bundle exec fastlane ios upload_store_assets
+[bundle exec] fastlane ios upload_store_assets
 ```
 
-The `release` lane builds and uploads the binary, metadata, and screenshots, but
-it does not submit the app for review automatically.
+Upload App Store metadata and screenshots only
+
+### ios build_release
+
+```sh
+[bundle exec] fastlane ios build_release
+```
+
+Build an App Store archive
+
+### ios upload_binary
+
+```sh
+[bundle exec] fastlane ios upload_binary
+```
+
+Build and upload App Store binary without metadata or screenshots
+
+### ios release
+
+```sh
+[bundle exec] fastlane ios release
+```
+
+Build and upload binary, metadata, and screenshots without submitting for review
+
+----
+
+This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
+
+More information about _fastlane_ can be found on [fastlane.tools](https://fastlane.tools).
+
+The documentation of _fastlane_ can be found on [docs.fastlane.tools](https://docs.fastlane.tools).

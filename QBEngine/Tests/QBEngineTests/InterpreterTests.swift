@@ -324,14 +324,14 @@ final class InterpreterTests: XCTestCase {
         XCTAssertTrue(output.buffer.contains("Hello"))
     }
 
-    func testLineBoxedFillsRectangle() async {
+    func testLineBFFillsRectangle() async {
         let interpreter = QBInterpreter()
         let output = ConsoleOutputHandler()
         interpreter.output = output
 
         await interpreter.run("""
         SCREEN 1
-        LINE (10, 10)-(14, 14), 2, B
+        LINE (10, 10)-(14, 14), 2, BF
         """)
 
         XCTAssertNil(interpreter.lastError)

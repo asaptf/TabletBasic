@@ -1,21 +1,24 @@
 import Foundation
 
 enum ProcedureExtractor {
-    static func extract(from physicalLines: [String]) throws -> (
-        mainLines: [String],
+    /// Extracts SUB/FUNCTION blocks while preserving original physical line numbers
+    /// on main-program lines for breakpoint mapping.
+    static func extract(from physicalLines: [PhysicalLine]) throws -> (
+        mainLines: [PhysicalLine],
         procedures: [ProcedureDef]
     ) {
         let procedureInfo = collectProcedureInfo(from: physicalLines)
         let knownProcedures = procedureInfo.all
         let knownFunctions = procedureInfo.functions
-        var mainLines: [String] = []
+        var mainLines: [PhysicalLine] = []
         var procedures: [ProcedureDef] = []
         var index = 0
 
         while index < physicalLines.count {
-            let trimmed = physicalLines[index].trimmingCharacters(in: .whitespaces)
+            let line = physicalLines[index]
+            let trimmed = line.text.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty {
-                mainLines.append(physicalLines[index])
+                mainLines.append(line)
                 index += 1
                 continue
             }
@@ -33,18 +36,18 @@ enum ProcedureExtractor {
                 continue
             }
 
-            mainLines.append(physicalLines[index])
+            mainLines.append(line)
             index += 1
         }
 
         return (mainLines, procedures)
     }
 
-    private static func collectProcedureInfo(from lines: [String]) -> (all: Set<String>, functions: Set<String>) {
+    private static func collectProcedureInfo(from lines: [PhysicalLine]) -> (all: Set<String>, functions: Set<String>) {
         var all = Set<String>()
         var functions = Set<String>()
         for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let trimmed = line.text.trimmingCharacters(in: .whitespaces)
             let upper = trimmed.uppercased()
             guard upper.hasPrefix("SUB ") || upper.hasPrefix("FUNCTION ") else { continue }
             let tokens = tokenize(trimmed)
@@ -61,23 +64,25 @@ enum ProcedureExtractor {
     }
 
     private static func parseProcedureBlock(
-        _ lines: [String],
+        _ lines: [PhysicalLine],
         start: Int,
         knownProcedures: Set<String>,
         knownFunctions: Set<String>
     ) throws -> (ProcedureDef, Int) {
-        let header = lines[start].trimmingCharacters(in: .whitespaces)
+        let headerLine = lines[start]
+        let header = headerLine.text.trimmingCharacters(in: .whitespaces)
         let headerTokens = tokenize(header)
-        var parser = ProcedureHeaderParser(tokens: headerTokens, sourceLine: start + 1)
+        var parser = ProcedureHeaderParser(tokens: headerTokens, sourceLine: headerLine.sourceLine)
         let headerInfo = try parser.parse()
 
-        var bodySourceLines: [String] = []
+        var bodyLines: [PhysicalLine] = []
         var index = start + 1
 
         while index < lines.count {
-            let trimmed = lines[index].trimmingCharacters(in: .whitespaces)
+            let line = lines[index]
+            let trimmed = line.text.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty {
-                bodySourceLines.append(lines[index])
+                bodyLines.append(line)
                 index += 1
                 continue
             }
@@ -92,14 +97,13 @@ enum ProcedureExtractor {
                 break
             }
 
-            bodySourceLines.append(lines[index])
+            bodyLines.append(line)
             index += 1
         }
 
         var bodyParser = ProgramParser()
         let body = try bodyParser.parsePhysicalLines(
-            bodySourceLines,
-            lineOffset: start + 1,
+            bodyLines,
             knownProcedures: knownProcedures,
             knownFunctions: knownFunctions
         )
@@ -109,7 +113,7 @@ enum ProcedureExtractor {
             params: headerInfo.params,
             returnType: headerInfo.returnType,
             body: body,
-            sourceLine: start + 1
+            sourceLine: headerLine.sourceLine
         )
         return (procedure, index - start)
     }
@@ -211,4 +215,3 @@ private struct ProcedureHeaderParser {
         }
     }
 }
-

@@ -164,22 +164,27 @@ public struct ExpressionParser {
             case .identifier(let rawName):
                 advance()
                 let (name, qbType) = splitTypeSuffix(rawName)
+                let upper = name.uppercased()
                 if match(.lparen) {
-                    let upper = name.uppercased()
                     if knownFunctions.contains(upper) || Self.builtinFunctions.contains(upper) || qbType == .variant {
-                        return .function(name, try parseArgumentList())
+                        return try finishFieldAccess(.function(name, try parseArgumentList()))
                     }
-                    return try parseArrayAccess(name: name, type: qbType)
+                    return try finishFieldAccess(try parseArrayAccess(name: name, type: qbType))
                 }
-                return .variable(name, qbType)
+                // Bare zero-arg builtins: INKEY$, TIMER, DATE$, TIME$, RND
+                if Self.zeroArgBuiltinNames.contains(upper) || Self.zeroArgBuiltinNames.contains(rawName.uppercased()) {
+                    return try finishFieldAccess(.function(rawName.uppercased().hasSuffix("$") ? rawName.uppercased() : upper, []))
+                }
+                return try finishFieldAccess(.variable(name, qbType))
             case .keyword(let keyword):
                 advance()
                 if match(.lparen) {
-                    return .function(keyword.rawValue.uppercased(), try parseArgumentList())
+                    return try finishFieldAccess(.function(keyword.rawValue.uppercased(), try parseArgumentList()))
                 }
                 if Self.zeroArgFunctions.contains(keyword) {
-                    return .function(keyword.rawValue.uppercased(), [])
+                    return try finishFieldAccess(.function(keyword.rawValue.uppercased(), []))
                 }
+                // Bare keywords used as functions without () in some cases still error
                 throw QBError.syntax("Unexpected keyword '\(keyword.rawValue)' in expression at \(currentPosition())")
             default:
                 break
@@ -216,16 +221,34 @@ public struct ExpressionParser {
     }
 
     private static let zeroArgFunctions: Set<Keyword> = [
-        .rnd, .inkey
+        .rnd, .inkey, .timer, .date, .time
+    ]
+
+    private static let zeroArgBuiltinNames: Set<String> = [
+        "RND", "INKEY", "INKEY$", "TIMER", "DATE", "DATE$", "TIME", "TIME$"
     ]
 
     private static let builtinFunctions: Set<String> = [
         "ABS", "ASC", "ATN", "CHR", "CHR$", "CINT", "CDBL", "CSNG", "CLNG",
-        "COS", "EXP", "FIX", "HEX$", "INKEY$", "INSTR", "INT", "LCASE", "LCASE$",
-        "LEFT", "LEFT$", "LEN", "LOG", "MID", "MID$", "OCT$", "RIGHT", "RIGHT$",
-        "RND", "SGN", "SIN", "SQR", "STR", "STR$", "STRING", "STRING$",
-        "TAN", "UCASE", "UCASE$", "VAL"
+        "COS", "EXP", "FIX", "HEX", "HEX$", "INKEY", "INKEY$", "INSTR", "INT", "LCASE", "LCASE$",
+        "LEFT", "LEFT$", "LEN", "LOG", "LTRIM", "LTRIM$", "MID", "MID$", "OCT", "OCT$", "RIGHT", "RIGHT$",
+        "RND", "RTRIM", "RTRIM$", "SGN", "SIN", "SQR", "SPACE", "SPACE$", "STR", "STR$", "STRING", "STRING$",
+        "TAN", "TIMER", "DATE", "DATE$", "TIME", "TIME$", "UCASE", "UCASE$", "VAL",
+        "LBOUND", "UBOUND", "POINT"
     ]
+
+    private mutating func finishFieldAccess(_ expr: Expr) throws -> Expr {
+        var result = expr
+        while match(.dot) {
+            guard case .identifier(let raw)? = peek()?.kind else {
+                throw QBError.syntax("Expected field name after '.'")
+            }
+            advance()
+            let (field, _) = splitTypeSuffix(raw)
+            result = .fieldAccess(result, field)
+        }
+        return result
+    }
 
     mutating func takeCommaIfPresent() -> Bool {
         match(.comma)

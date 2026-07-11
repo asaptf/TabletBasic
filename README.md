@@ -25,27 +25,34 @@ being an emulator or a Microsoft product.
 
 ## BASIC Support
 
-TabletBasic currently focuses on the parts of BASIC that are most useful for
-learning:
+TabletBasic targets educational **QuickBASIC 4.5–style** interpreter semantics:
 
 - Variables with classic suffixes: `%`, `&`, `!`, `#`, `$`.
-- Numeric and string expressions.
-- `PRINT`, `INPUT`, `LET`, assignment, `REM`.
-- `IF...THEN...ELSE` and block `IF...END IF`.
+- Numeric and string expressions; string comparison; `CONST`, `SWAP`.
+- `PRINT`, `PRINT USING`, `INPUT`, `LINE INPUT`, `LET`, assignment, `REM`.
+- `IF...THEN...ELSE` / `ELSEIF` and block `IF...END IF`.
 - `SELECT CASE...CASE...END SELECT`.
-- `FOR...NEXT`, `WHILE...WEND`, `DO...LOOP`, `EXIT`.
-- Line-number control flow: `GOTO`, `GOSUB`, `RETURN`, `ON...GOTO`,
+- `FOR...NEXT`, `WHILE...WEND`, `DO...LOOP` (including bottom-tested
+  `LOOP WHILE` / `LOOP UNTIL`), `EXIT`.
+- Line numbers and **named labels**: `GOTO`, `GOSUB`, `RETURN`, `ON...GOTO`,
   `ON...GOSUB`.
-- Arrays with `DIM`.
+- Arrays with `DIM` / `DIM AS`, `OPTION BASE`, `LBOUND` / `UBOUND`.
+- User-defined types: `TYPE...END TYPE`, field access (`P.X`).
+- Procedures: `SUB` / `FUNCTION`, `DECLARE`, `SHARED`, `STATIC`, `CALL`.
 - Inline data with `DATA`, `READ`, and `RESTORE`.
 - Random numbers with `RANDOMIZE` and `RND`.
-- Simple graphics: `SCREEN`, `CLS`, `COLOR`, `PSET`, `PRESET`, `LINE`, `CIRCLE`.
-- String functions including `LEFT$`, `RIGHT$`, `MID$`, `UCASE$`, `LEN`, `STR$`, `VAL`.
-- A small set of built-in math and formatting functions.
+- Text screen: `LOCATE`, `COLOR`, `CLS`; interactive `INKEY$`.
+- Graphics: `SCREEN`, `PSET`, `PRESET`, `LINE` (`B` / `BF`), `CIRCLE`,
+  `PAINT`, `DRAW`, `GET` / `PUT`.
+- Sequential files: `OPEN` / `CLOSE`, `PRINT #`, `INPUT #`, `LINE INPUT #`
+  (app sandbox directory).
+- Built-ins including `LEFT$`, `RIGHT$`, `MID$` (function + statement),
+  `UCASE$`, `LCASE$`, `LTRIM$`, `RTRIM$`, `SPACE$`, `STRING$`, `ASC`,
+  `CHR$`, `HEX$`, `OCT$`, `INSTR`, `LEN`, `STR$`, `VAL`, math functions,
+  `CINT` / `CDBL` / `CSNG` / `CLNG`, `TIMER`, `DATE$`, `TIME$`.
 
-The goal is educational compatibility, not full QuickBASIC compatibility. Some
-programs will need adjustment, and many advanced DOS-era features are outside
-the current scope.
+Not in scope: DOS `.EXE` compilation, `PEEK`/`POKE`/segments, COM ports, or
+hardware-accurate sound.
 
 ## Project Structure
 
@@ -134,11 +141,9 @@ sample programs, and rendering text/graphics output.
 
 ## Roadmap Ideas
 
-- Better editing tools (syntax helpers, undo, multi-cursor).
-- More QuickBASIC-compatible statements and functions (e.g. bottom-tested
-  `LOOP UNTIL` / `LOOP WHILE`).
-- Richer graphics commands and palette behavior.
-- Additional sample programs and advanced language features.
+- Better editing tools (undo stack, multi-cursor).
+- Additional SCREEN modes and palette control.
+- More sample programs and school curriculum packs.
 - Better diagnostics with source locations and fix suggestions.
 
 ## License

@@ -12,16 +12,49 @@ private struct VariableScope {
 public final class Environment: @unchecked Sendable {
     private var scalars: [String: QBValue] = [:]
     private var arrays: [String: QBArray] = [:]
+    private var constants: [String: QBValue] = [:]
     private var defaultTypes: [Character: QBType] = [:]
     private var scopeStack: [VariableScope] = []
     private var dataItems: [QBValue] = []
     private var dataPointer: Int = 0
     private var dataLineStarts: [(line: Int, index: Int)] = []
+    private var staticStorage: [String: [String: QBValue]] = [:]
+    private var typeDefs: [String: TypeDef] = [:]
+    public var optionBase: Int = 0
     public var randomSeed: UInt64 = 1
     public private(set) var lastRandom: Double = 0
+    public let fileStore = FileStore()
+    public var keyQueue: [String] = []
+    public var programStartTime: Date = Date()
 
     public init() {
         seedRandom()
+        programStartTime = Date()
+    }
+
+    public func resetSession() {
+        scalars.removeAll()
+        arrays.removeAll()
+        constants.removeAll()
+        scopeStack.removeAll()
+        defaultTypes.removeAll()
+        typeDefs.removeAll()
+        dataItems = []
+        dataPointer = 0
+        dataLineStarts = []
+        staticStorage.removeAll()
+        optionBase = 0
+        keyQueue.removeAll()
+        programStartTime = Date()
+        fileStore.closeAll()
+    }
+
+    public func registerTypes(_ defs: [String: TypeDef]) {
+        typeDefs = defs
+    }
+
+    public func typeDef(named name: String) -> TypeDef? {
+        typeDefs[name.uppercased()]
     }
 
     public func defaultType(for name: String) -> QBType {
@@ -59,8 +92,51 @@ public final class Environment: @unchecked Sendable {
         scopeStack[scopeStack.count - 1].bindings[key] = .stored(coerce(value, to: type), type)
     }
 
+    public func bindShared(_ name: String) {
+        let key = name.uppercased()
+        guard !scopeStack.isEmpty else { return }
+        // Alias to global of the same name (resolved specially to avoid circular lookup)
+        scopeStack[scopeStack.count - 1].bindings[key] = .alias("__GLOBAL__." + key)
+    }
+
+    public func bindStatic(procedure: String, name: String, type: QBType) {
+        let proc = procedure.uppercased()
+        let key = name.uppercased()
+        if staticStorage[proc] == nil {
+            staticStorage[proc] = [:]
+        }
+        if staticStorage[proc]?[key] == nil {
+            staticStorage[proc]?[key] = defaultValue(for: type)
+        }
+        guard !scopeStack.isEmpty else { return }
+        let storageKey = "\(proc).\(key)"
+        // Alias to a pseudo-global key held in scalars via static bridge
+        if scalars[storageKey] == nil {
+            scalars[storageKey] = staticStorage[proc]?[key] ?? defaultValue(for: type)
+        }
+        scopeStack[scopeStack.count - 1].bindings[key] = .alias(storageKey)
+    }
+
+    public func syncStaticFromScalars(procedure: String, name: String) {
+        let proc = procedure.uppercased()
+        let key = name.uppercased()
+        let storageKey = "\(proc).\(key)"
+        if let value = scalars[storageKey] {
+            staticStorage[proc]?[key] = value
+        }
+    }
+
+    public func defineConstant(_ name: String, value: QBValue) throws {
+        let key = name.uppercased()
+        if constants[key] != nil {
+            throw QBError.runtime("Constant \(key) already defined")
+        }
+        constants[key] = value
+    }
+
     public func getVariable(_ name: String) throws -> QBValue {
         let key = name.uppercased()
+        if let constant = constants[key] { return constant }
         if let value = try resolveScopedVariable(key) {
             return value
         }
@@ -71,10 +147,47 @@ public final class Environment: @unchecked Sendable {
 
     public func setVariable(_ name: String, value: QBValue, type: QBType) throws {
         let key = name.uppercased()
+        if constants[key] != nil {
+            throw QBError.runtime("Cannot assign to constant \(key)")
+        }
         if try setScopedVariable(key, value: value, type: type) {
             return
         }
         scalars[key] = coerce(value, to: type)
+    }
+
+    public func setRecordField(variable: String, field: String, value: QBValue) throws {
+        let key = variable.uppercased()
+        let fieldKey = field.uppercased()
+        var record = try getVariable(key)
+        guard case .record(let typeName, var fields) = record else {
+            throw QBError.runtime("Variable \(key) is not a user-defined type")
+        }
+        fields[fieldKey] = value
+        record = .record(typeName: typeName, fields: fields)
+        try setVariable(key, value: record, type: .userType(typeName))
+    }
+
+    public func getRecordField(variable: String, field: String) throws -> QBValue {
+        let record = try getVariable(variable)
+        guard case .record(_, let fields) = record else {
+            throw QBError.runtime("Variable \(variable) is not a user-defined type")
+        }
+        guard let value = fields[field.uppercased()] else {
+            throw QBError.runtime("Unknown field \(field)")
+        }
+        return value
+    }
+
+    public func makeRecord(typeName: String) throws -> QBValue {
+        guard let def = typeDefs[typeName.uppercased()] else {
+            throw QBError.runtime("Unknown type \(typeName)")
+        }
+        var fields: [String: QBValue] = [:]
+        for field in def.fields {
+            fields[field.name] = defaultValue(for: field.type)
+        }
+        return .record(typeName: def.name, fields: fields)
     }
 
     private func resolveScopedVariable(_ key: String, visited: Set<String> = []) throws -> QBValue? {
@@ -90,11 +203,20 @@ public final class Environment: @unchecked Sendable {
             case .stored(let value, _):
                 return value
             case .alias(let target):
+                let globalKey = target.hasPrefix("__GLOBAL__.") ? String(target.dropFirst("__GLOBAL__.".count)) : target
+                if target.hasPrefix("__GLOBAL__.") {
+                    if let value = scalars[globalKey] { return value }
+                    if let constant = constants[globalKey] { return constant }
+                    return defaultValue(for: defaultType(for: globalKey))
+                }
                 if let value = try resolveScopedVariable(target, visited: nextVisited) {
                     return value
                 }
                 if let value = scalars[target] {
                     return value
+                }
+                if let constant = constants[target] {
+                    return constant
                 }
                 return defaultValue(for: defaultType(for: target))
             }
@@ -110,6 +232,11 @@ public final class Environment: @unchecked Sendable {
                 scopeStack[index].bindings[key] = .stored(coerce(value, to: storedType), storedType)
                 return true
             case .alias(let target):
+                if target.hasPrefix("__GLOBAL__.") {
+                    let globalKey = String(target.dropFirst("__GLOBAL__.".count))
+                    scalars[globalKey] = coerce(value, to: type)
+                    return true
+                }
                 try setVariable(target, value: value, type: type)
                 return true
             }
@@ -135,7 +262,36 @@ public final class Environment: @unchecked Sendable {
 
     public func dimension(_ name: String, type: QBType, bounds: [Int]) throws {
         let key = name.uppercased()
-        arrays[key] = try QBArray(type: type, bounds: bounds)
+        arrays[key] = try QBArray(type: type, bounds: bounds, optionBase: optionBase)
+    }
+
+    public func lbound(_ name: String, dimension: Int = 1) throws -> Int {
+        let key = name.uppercased()
+        guard let array = arrays[key] else {
+            throw QBError.runtime("Array '\(key)' not dimensioned")
+        }
+        return try array.lbound(dimension: dimension)
+    }
+
+    public func ubound(_ name: String, dimension: Int = 1) throws -> Int {
+        let key = name.uppercased()
+        guard let array = arrays[key] else {
+            throw QBError.runtime("Array '\(key)' not dimensioned")
+        }
+        return try array.ubound(dimension: dimension)
+    }
+
+    public func eraseArray(_ name: String) {
+        arrays.removeValue(forKey: name.uppercased())
+    }
+
+    public func injectKey(_ key: String) {
+        keyQueue.append(key)
+    }
+
+    public func pollKey() -> String {
+        guard !keyQueue.isEmpty else { return "" }
+        return keyQueue.removeFirst()
     }
 
     public func resetData() {
@@ -190,6 +346,29 @@ public final class Environment: @unchecked Sendable {
         return value
     }
 
+    public func timerSeconds() -> Double {
+        Date().timeIntervalSince(programStartTime)
+    }
+
+    public func allScalarSnapshot() -> [String: QBValue] {
+        var result = scalars
+        for (key, value) in constants {
+            result[key] = value
+        }
+        return result
+    }
+
+    public func watchValue(name: String) -> String {
+        let key = name.uppercased()
+        if let constant = constants[key] {
+            return constant.asString
+        }
+        if let value = try? getVariable(key) {
+            return value.asString
+        }
+        return "0"
+    }
+
     private func coerce(_ value: QBValue, to type: QBType) -> QBValue {
         switch type {
         case .integer: return .integer(value.asInt)
@@ -198,6 +377,9 @@ public final class Environment: @unchecked Sendable {
         case .double: return .double(value.asDouble)
         case .string: return .string(value.asString)
         case .variant: return value
+        case .userType:
+            if case .record = value { return value }
+            return value
         }
     }
 }
@@ -208,7 +390,7 @@ public final class QBArray: @unchecked Sendable {
     private let upperBounds: [Int]
     private var storage: [QBValue]
 
-    public init(type: QBType, bounds: [Int]) throws {
+    public init(type: QBType, bounds: [Int], optionBase: Int = 0) throws {
         guard bounds.count % 2 == 0 else {
             throw QBError.runtime("Invalid DIM bounds")
         }
@@ -216,13 +398,18 @@ public final class QBArray: @unchecked Sendable {
         var lowers: [Int] = []
         var uppers: [Int] = []
         for i in stride(from: 0, to: bounds.count, by: 2) {
-            lowers.append(bounds[i])
-            uppers.append(bounds[i + 1])
+            let lower = bounds[i]
+            let upper = bounds[i + 1]
+            // When parser only supplies upper bounds as pairs (base, upper)
+            lowers.append(lower)
+            uppers.append(upper)
         }
+        // If a single upper was passed as [base, upper] from executor with optionBase
+        _ = optionBase
         self.lowerBounds = lowers
         self.upperBounds = uppers
         let count = zip(lowers, uppers).reduce(1) { partial, pair in
-            partial * (pair.1 - pair.0 + 1)
+            partial * max(0, pair.1 - pair.0 + 1)
         }
         self.storage = Array(repeating: defaultValue(for: type), count: max(count, 0))
     }
@@ -235,6 +422,22 @@ public final class QBArray: @unchecked Sendable {
     public func set(_ indices: [Int], value: QBValue) throws {
         let offset = try computeOffset(indices)
         storage[offset] = value
+    }
+
+    public func lbound(dimension: Int) throws -> Int {
+        let index = dimension - 1
+        guard index >= 0 && index < lowerBounds.count else {
+            throw QBError.runtime("Invalid dimension")
+        }
+        return lowerBounds[index]
+    }
+
+    public func ubound(dimension: Int) throws -> Int {
+        let index = dimension - 1
+        guard index >= 0 && index < upperBounds.count else {
+            throw QBError.runtime("Invalid dimension")
+        }
+        return upperBounds[index]
     }
 
     private func computeOffset(_ indices: [Int]) throws -> Int {
@@ -257,7 +460,7 @@ public final class QBArray: @unchecked Sendable {
     }
 }
 
-private func defaultValue(for type: QBType) -> QBValue {
+func defaultValue(for type: QBType) -> QBValue {
     switch type {
     case .integer: return .integer(0)
     case .long: return .long(0)
@@ -265,5 +468,6 @@ private func defaultValue(for type: QBType) -> QBValue {
     case .double: return .double(0)
     case .string: return .string("")
     case .variant: return .integer(0)
+    case .userType(let name): return .record(typeName: name, fields: [:])
     }
 }

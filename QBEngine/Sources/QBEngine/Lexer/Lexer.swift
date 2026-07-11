@@ -2,7 +2,9 @@ import Foundation
 
 public struct Lexer: Sendable {
     private static let dollarSuffixFunctions: Set<String> = [
-        "ucase", "lcase", "left", "right", "mid", "chr", "str", "string"
+        "ucase", "lcase", "left", "right", "mid", "chr", "str", "string",
+        "hex", "oct", "space", "ltrim", "rtrim", "date", "time", "inkey",
+        "input"
     ]
     private let source: String
     private let chars: [Character]
@@ -57,6 +59,12 @@ public struct Lexer: Sendable {
 
         if ch.isLetter || ch == "_" {
             return readIdentifierOrKeyword(startLine: startLine, startColumn: startColumn)
+        }
+
+        // File-number prefix: #1 → integer 1
+        if ch == "#", let next = peekNext(), next.isNumber {
+            advance()
+            return readNumber(startLine: startLine, startColumn: startColumn)
         }
 
         switch ch {

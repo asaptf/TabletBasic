@@ -132,8 +132,14 @@ enum BasicLanguageGuide {
                   X = X + 1
               LOOP
 
-            Bottom-tested LOOP WHILE/UNTIL are not supported yet; use DO WHILE/UNTIL
-            at the top, or EXIT DO inside the loop body.
+            Bottom-tested forms are supported:
+              DO
+                  COUNT% = COUNT% + 1
+              LOOP UNTIL COUNT% >= 10
+
+              DO
+                  N% = N% + 1
+              LOOP WHILE N% < 5
 
             Early exit:
               EXIT FOR
@@ -223,10 +229,11 @@ enum BasicLanguageGuide {
               LEFT$(S$, N)        ' first N characters
               RIGHT$(S$, N)       ' last N characters
               MID$(S$, start, len) ' substring from start (1-based)
-              UCASE$(S$)          ' uppercase
-              STR$(N)             ' number to string
-              VAL(S$)             ' string to number
-              CHR$(N)             ' character from ASCII code
+              MID$(S$, start, len) = T$  ' statement form replaces mid
+              UCASE$(S$)  LCASE$(S$)
+              LTRIM$(S$)  RTRIM$(S$)  SPACE$(N)  STRING$(N, C)
+              ASC(S$)  CHR$(N)  HEX$(N)  OCT$(N)  INSTR(...)
+              STR$(N)  VAL(S$)  INKEY$
 
             Example:
               WORD$ = "TabletBasic"
@@ -247,9 +254,10 @@ enum BasicLanguageGuide {
               MOD                  ' remainder
 
             Functions:
-              ABS(X)    SQR(X)     INT(X)     SGN(X)
-              SIN(X)    COS(X)     TAN(X)
-              RND       RANDOMIZE
+              ABS(X)    SQR(X)     INT(X)     SGN(X)    FIX(X)
+              SIN(X)    COS(X)     TAN(X)     ATN(X)    EXP(X)  LOG(X)
+              CINT(X)   CDBL(X)    CSNG(X)    CLNG(X)
+              RND       RANDOMIZE  TIMER      DATE$     TIME$
 
             RND returns 0 to 1 (exclusive of 1). Seed the generator:
               RANDOMIZE 42
@@ -270,9 +278,15 @@ enum BasicLanguageGuide {
               COLOR 4, 0
               CIRCLE (160, 100), 50, 4
               LINE (10, 10)-(100, 100), 2
-              LINE (10, 10)-(100, 100), 2, B    ' box
+              LINE (10, 10)-(100, 100), 2, B     ' box outline
+              LINE (10, 10)-(100, 100), 2, BF    ' filled box
+              PAINT (50, 50), 4
+              DRAW "U20 R20 D20 L20"
+              GET (0, 0)-(10, 10), SPR
+              PUT (100, 100), SPR
               PSET (50, 50), 15
               PRESET (50, 50)                   ' erase pixel
+              LOCATE 1, 1: PRINT "Text"
 
             Coordinates: (x, y) with origin top-left.
             Colors are palette indices 0–255 (mode 13 uses 0–15 prominently).
@@ -311,7 +325,10 @@ enum BasicLanguageGuide {
             • In PRINT, semicolon (;) stays on the line; comma (,) jumps to the next zone.
             • Save your work with File > Save or Save As to Files / iCloud.
             • Graphics programs still PRINT text — check both the text and graphics panels.
-            • TabletBasic aims for educational compatibility, not full DOS QuickBASIC.
+            • TabletBasic aims for QuickBASIC 4.5 educational compatibility \
+              (interpreter + IDE). DOS hardware APIs and EXE compilation are out of scope.
+            • Edit > Find, Run > Stop / Step / Toggle Breakpoint support classic workflow.
+            • OPEN "file" FOR OUTPUT AS #1 … PRINT #1 … CLOSE #1 for sandbox files.
             """
         )
     ]
