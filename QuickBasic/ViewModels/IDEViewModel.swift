@@ -4,7 +4,9 @@ import SwiftUI
 
 @MainActor
 final class IDEViewModel: ObservableObject {
-    @Published var sourceCode: String = ""
+    @Published var sourceCode: String = "" {
+        didSet { recordEdit(from: oldValue) }
+    }
     @Published var outputText: String = ""
     @Published var immediateInput: String = ""
     @Published var statusMessage: String = ""
@@ -18,13 +20,18 @@ final class IDEViewModel: ObservableObject {
     @Published var showRunOutput: Bool = false
     @Published var showOpenFilePicker: Bool = false
     @Published var showSaveFilePicker: Bool = false
+    @Published var showFindDialog: Bool = false
+    @Published var showGoToLineDialog: Bool = false
+    @Published var findQuery: String = ""
+    @Published var goToLineText: String = ""
+    @Published var editorCommand: EditorCommand = .idle
     @Published var documentName: String = "Untitled"
     @Published var cursorLine: Int = 1
     @Published var cursorColumn: Int = 1
     @Published var showInputPrompt: Bool = false
     @Published var inputPromptText: String = ""
     @Published var inputPromptValue: String = ""
-    @Published var findQuery: String = ""
+    @Published var lastErrorLine: Int?
     @Published var findReplaceText: String = ""
     @Published var showFindPanel: Bool = false
     @Published var findStatus: String = ""
@@ -40,9 +47,19 @@ final class IDEViewModel: ObservableObject {
     private let consoleOutput = ConsoleOutputHandler()
     private var documentBookmark: Data?
     private var findCursor: String.Index?
+    private var runTask: Task<Void, Never>?
+    private var savedSnapshot: String = ""
+    private var isApplyingHistory = false
+    private var undoStack: [String] = []
+    private var redoStack: [String] = []
 
     var screen: ScreenBuffer { interpreter.screen }
     var hasGraphicsOutput: Bool { screen.isGraphicsMode }
+    var isDocumentDirty: Bool { sourceCode != savedSnapshot }
+    var documentTitle: String { isDocumentDirty ? "\(documentName)*" : documentName }
+    var canUndo: Bool { !undoStack.isEmpty }
+    var canRedo: Bool { !redoStack.isEmpty }
+    var canJumpToError: Bool { lastErrorLine != nil }
 
     init() {
         interpreter.output = consoleOutput
@@ -52,7 +69,7 @@ final class IDEViewModel: ObservableObject {
            let filename = ProcessInfo.processInfo.environment["UI_TEST_SAMPLE"],
            let program = SampleProgramLibrary.all.first(where: { $0.filename == filename }) {
             showWelcome = false
-            sourceCode = BasicSourceNormalizer.normalize(program.code)
+            replaceSource(BasicSourceNormalizer.normalize(program.code), markSaved: true, clearHistory: true)
             documentName = program.filename
         }
     }
@@ -75,16 +92,19 @@ final class IDEViewModel: ObservableObject {
         consoleOutput.clear()
         interpreter.screen.reset()
         screenRevision += 1
+        lastErrorLine = nil
+        statusMessage = ""
         interpreter.breakpoints = breakpoints
         interpreter.watches = watchList
         interpreter.debugEnabled = debugEnabled || stepMode || !breakpoints.isEmpty
         interpreter.stepMode = stepMode
 
-        Task {
-            // Poll pause state for UI while running
+        runTask = Task {
             let poll = Task { @MainActor in
                 while isRunning {
                     isPaused = interpreter.isPaused
+                    outputText = consoleOutput.buffer
+                    screenRevision += 1
                     if interpreter.isPaused {
                         watchValues = interpreter.watchSnapshot()
                         statusMessage = "Paused at line \(interpreter.currentSourceLine)"
@@ -94,14 +114,10 @@ final class IDEViewModel: ObservableObject {
             }
             await interpreter.run(preparedSource)
             poll.cancel()
-            outputText = consoleOutput.buffer
-            screenRevision += 1
-            isRunning = false
             isPaused = false
             watchValues = interpreter.watchSnapshot()
-            if let error = interpreter.lastError {
-                statusMessage = error
-            } else {
+            finishRun()
+            if interpreter.lastError == nil, statusMessage.isEmpty || statusMessage == "Stopped" {
                 statusMessage = "Ready"
             }
         }
@@ -110,7 +126,7 @@ final class IDEViewModel: ObservableObject {
     func stopProgram() {
         interpreter.stop()
         cancelPendingInput()
-        statusMessage = "Stopping…"
+        statusMessage = "Stopped"
     }
 
     func stepProgram() {
@@ -158,60 +174,11 @@ final class IDEViewModel: ObservableObject {
         interpreter.injectKey(key)
     }
 
-    // MARK: - Find / Replace
-
     func openFind() {
         showFindPanel = true
+        showFindDialog = true
         findStatus = ""
         findCursor = nil
-    }
-
-    func findNext() {
-        let query = findQuery
-        guard !query.isEmpty else {
-            findStatus = "Enter search text"
-            return
-        }
-        let source = sourceCode
-        let start = findCursor ?? source.startIndex
-        let searchRange = start..<source.endIndex
-        if let range = source.range(of: query, options: [.caseInsensitive], range: searchRange) {
-            findCursor = range.upperBound
-            updateCursorFromIndex(range.lowerBound, in: source)
-            findStatus = "Found at line \(cursorLine)"
-            return
-        }
-        // Wrap
-        if let range = source.range(of: query, options: [.caseInsensitive]) {
-            findCursor = range.upperBound
-            updateCursorFromIndex(range.lowerBound, in: source)
-            findStatus = "Found at line \(cursorLine) (wrapped)"
-            return
-        }
-        findStatus = "Not found"
-    }
-
-    func replaceNext() {
-        let query = findQuery
-        guard !query.isEmpty else { return }
-        let source = sourceCode
-        let start = findCursor ?? source.startIndex
-        if let range = source.range(of: query, options: [.caseInsensitive], range: start..<source.endIndex)
-            ?? source.range(of: query, options: [.caseInsensitive]) {
-            sourceCode.replaceSubrange(range, with: findReplaceText)
-            findCursor = sourceCode.index(range.lowerBound, offsetBy: findReplaceText.count, limitedBy: sourceCode.endIndex)
-            findStatus = "Replaced"
-            findNext()
-        } else {
-            findStatus = "Not found"
-        }
-    }
-
-    private func updateCursorFromIndex(_ index: String.Index, in source: String) {
-        let prefix = source[..<index]
-        let lines = prefix.split(separator: "\n", omittingEmptySubsequences: false)
-        cursorLine = max(1, lines.count)
-        cursorColumn = (lines.last?.count ?? 0) + 1
     }
 
     func runImmediate() {
@@ -220,18 +187,17 @@ final class IDEViewModel: ObservableObject {
         immediateInput = ""
         showRunOutput = true
         showWelcome = false
+        isRunning = true
 
-        Task {
-            isRunning = true
+        runTask = Task {
             await interpreter.runImmediate(BasicSourceNormalizer.normalize(command))
-            if !consoleOutput.buffer.isEmpty {
-                if !outputText.isEmpty { outputText += "\n" }
-                outputText += consoleOutput.buffer
-            }
-            screenRevision += 1
-            isRunning = false
-            consoleOutput.clear()
+            finishRun()
         }
+    }
+
+    func enqueueRuntimeKey(_ key: String) {
+        guard isRunning, !key.isEmpty else { return }
+        interpreter.injectKey(key)
     }
 
     func returnToEditor() {
@@ -241,7 +207,7 @@ final class IDEViewModel: ObservableObject {
     func newFile() {
         dismissModalSheets()
         presentEditor()
-        sourceCode = ""
+        replaceSource("", markSaved: true, clearHistory: true)
         documentName = "Untitled"
         documentBookmark = nil
         outputText = ""
@@ -251,6 +217,7 @@ final class IDEViewModel: ObservableObject {
         cursorLine = 1
         cursorColumn = 1
         statusMessage = ""
+        lastErrorLine = nil
     }
 
     var exportDocument: BasicProgramDocument {
@@ -302,6 +269,7 @@ final class IDEViewModel: ObservableObject {
                 try BasicProgramFileStore.writeText(preparedSource, to: url)
                 documentName = url.lastPathComponent
                 documentBookmark = try BasicProgramFileStore.makeBookmark(for: url)
+                savedSnapshot = sourceCode
                 statusMessage = "Saved \(url.lastPathComponent)"
             } catch {
                 statusMessage = error.localizedDescription
@@ -314,7 +282,7 @@ final class IDEViewModel: ObservableObject {
     func openExternalURL(_ url: URL) {
         do {
             let text = try BasicProgramFileStore.readText(from: url)
-            sourceCode = BasicSourceNormalizer.normalize(text)
+            replaceSource(BasicSourceNormalizer.normalize(text), markSaved: true, clearHistory: true)
             documentName = url.lastPathComponent
             documentBookmark = try BasicProgramFileStore.makeBookmark(for: url)
             showWelcome = false
@@ -333,6 +301,7 @@ final class IDEViewModel: ObservableObject {
         do {
             let url = try BasicProgramFileStore.resolveURL(from: bookmark)
             try BasicProgramFileStore.writeText(preparedSource, to: url)
+            savedSnapshot = sourceCode
             statusMessage = "Saved \(url.lastPathComponent)"
         } catch {
             documentBookmark = nil
@@ -380,7 +349,7 @@ final class IDEViewModel: ObservableObject {
     }
 
     func loadSampleProgram(_ program: SampleProgram) {
-        sourceCode = BasicSourceNormalizer.normalize(program.code)
+        replaceSource(BasicSourceNormalizer.normalize(program.code), markSaved: true, clearHistory: true)
         documentName = program.filename
         clearDocumentReference()
         showProgramLibrary = false
@@ -389,12 +358,94 @@ final class IDEViewModel: ObservableObject {
     }
 
     func loadLesson(_ lesson: Lesson) {
-        sourceCode = lesson.starterCode
+        replaceSource(lesson.starterCode, markSaved: true, clearHistory: true)
         documentName = "LESSON.BAS"
         clearDocumentReference()
         showSurvivalGuide = false
         showWelcome = false
         showRunOutput = false
+    }
+
+    func undoEdit() {
+        guard let previous = undoStack.popLast() else { return }
+        isApplyingHistory = true
+        redoStack.append(sourceCode)
+        sourceCode = previous
+        isApplyingHistory = false
+    }
+
+    func redoEdit() {
+        guard let next = redoStack.popLast() else { return }
+        isApplyingHistory = true
+        undoStack.append(sourceCode)
+        sourceCode = next
+        isApplyingHistory = false
+    }
+
+    func requestFind() {
+        showFindDialog = true
+        showGoToLineDialog = false
+    }
+
+    func findNext(skipCurrent: Bool = true) {
+        guard !findQuery.isEmpty else {
+            findStatus = "Enter search text"
+            return
+        }
+        var start = SourceFind.utf16Offset(line: cursorLine, column: cursorColumn, in: sourceCode)
+        if skipCurrent {
+            start += 1
+        }
+        guard let match = SourceFind.find(in: sourceCode, query: findQuery, startUTF16: start) else {
+            findStatus = "Not found"
+            statusMessage = "Not found"
+            return
+        }
+        cursorLine = match.line
+        cursorColumn = match.column
+        editorCommand = .select(match.utf16Range)
+        findStatus = "Found at line \(match.line)"
+        statusMessage = ""
+    }
+
+    func replaceNext() {
+        let query = findQuery
+        guard !query.isEmpty else { return }
+        let source = sourceCode
+        let start = findCursor ?? source.startIndex
+        if let range = source.range(of: query, options: [.caseInsensitive], range: start..<source.endIndex)
+            ?? source.range(of: query, options: [.caseInsensitive]) {
+            sourceCode.replaceSubrange(range, with: findReplaceText)
+            findCursor = sourceCode.index(range.lowerBound, offsetBy: findReplaceText.count, limitedBy: sourceCode.endIndex)
+            findStatus = "Replaced"
+            findNext(skipCurrent: false)
+        } else {
+            findStatus = "Not found"
+        }
+    }
+
+    func requestGoToLine() {
+        goToLineText = "\(cursorLine)"
+        showGoToLineDialog = true
+        showFindDialog = false
+    }
+
+    func jumpToLine(_ line: Int) {
+        let target = max(1, line)
+        cursorLine = target
+        cursorColumn = 1
+        editorCommand = .goToLine(target)
+        showGoToLineDialog = false
+    }
+
+    func jumpToError() {
+        guard let line = lastErrorLine else { return }
+        jumpToLine(line)
+    }
+
+    func checkLesson(_ lesson: Lesson) async -> LessonCheckResult {
+        let source = documentName == "LESSON.BAS" && !sourceCode.isEmpty ? sourceCode : lesson.starterCode
+        return await LessonChecker.check(source: source, expectedOutput: lesson.expectedOutput)
     }
 
     func handleShortcut(_ action: IDEAction) {
@@ -413,6 +464,7 @@ final class IDEViewModel: ObservableObject {
         case .toggleBreakpoint:
             toggleBreakpointAtCursor()
         case .find:
+            requestFind()
             openFind()
         case .findNext:
             findNext()
@@ -443,6 +495,14 @@ final class IDEViewModel: ObservableObject {
             dismissWelcome(openSurvivalGuide: true)
         case .about:
             showAbout = true
+        case .undo:
+            undoEdit()
+        case .redo:
+            redoEdit()
+        case .goToLine:
+            requestGoToLine()
+        case .jumpToError:
+            jumpToError()
         }
     }
 
@@ -456,6 +516,44 @@ final class IDEViewModel: ObservableObject {
         showSurvivalGuide = false
         showProgramLibrary = false
         showAbout = false
+    }
+
+    private func finishRun() {
+        outputText = consoleOutput.buffer
+        screenRevision += 1
+        isRunning = false
+        lastErrorLine = interpreter.lastErrorLine
+        if let error = interpreter.lastError {
+            statusMessage = error == "Program stopped" ? "Stopped" : error
+        }
+        runTask = nil
+    }
+
+    private func refreshLiveOutput() {
+        outputText = consoleOutput.buffer
+        screenRevision += 1
+    }
+
+    private func recordEdit(from oldValue: String) {
+        guard !isApplyingHistory, oldValue != sourceCode else { return }
+        undoStack.append(oldValue)
+        if undoStack.count > 200 {
+            undoStack.removeFirst()
+        }
+        redoStack.removeAll()
+    }
+
+    private func replaceSource(_ text: String, markSaved: Bool, clearHistory: Bool) {
+        isApplyingHistory = true
+        sourceCode = text
+        isApplyingHistory = false
+        if clearHistory {
+            undoStack.removeAll()
+            redoStack.removeAll()
+        }
+        if markSaved {
+            savedSnapshot = sourceCode
+        }
     }
 
     private func insertLineNumbers() {
@@ -482,8 +580,8 @@ final class IDEViewModel: ObservableObject {
 
 enum IDEAction: String {
     case run
-    case runImmediate
     case stop
+    case runImmediate
     case step
     case continueRun
     case toggleBreakpoint
@@ -502,6 +600,10 @@ enum IDEAction: String {
     case dismissWelcome
     case dismissWelcomeToGuide
     case about
+    case undo
+    case redo
+    case goToLine
+    case jumpToError
 }
 
 extension IDEViewModel: QBInputHandler {

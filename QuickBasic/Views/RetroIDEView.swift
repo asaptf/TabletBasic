@@ -19,15 +19,24 @@ struct RetroIDEView: View {
                         onEnter: { viewModel.handleShortcut(.dismissWelcomeToGuide) },
                         onEscape: { viewModel.handleShortcut(.dismissWelcome) }
                     )
-                } else if viewModel.showRunOutput {
-                    RunOutputView(viewModel: viewModel)
                 } else {
-                    CodeEditorView(
-                        text: $viewModel.sourceCode,
-                        cursorLine: $viewModel.cursorLine,
-                        cursorColumn: $viewModel.cursorColumn
-                    )
-                    .focused($editorFocused)
+                    GeometryReader { geometry in
+                        VStack(spacing: 0) {
+                            CodeEditorView(
+                                text: $viewModel.sourceCode,
+                                cursorLine: $viewModel.cursorLine,
+                                cursorColumn: $viewModel.cursorColumn,
+                                command: $viewModel.editorCommand
+                            )
+                            .focused($editorFocused)
+                            .frame(maxHeight: .infinity)
+
+                            outputSplitBar
+
+                            RunOutputView(viewModel: viewModel)
+                                .frame(height: outputPaneHeight(in: geometry.size.height))
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -37,14 +46,22 @@ struct RetroIDEView: View {
                         .onTapGesture { isMenuOpen = false }
                 }
             }
+            .overlay {
+                if viewModel.showFindDialog {
+                    FindDialogView(viewModel: viewModel)
+                } else if viewModel.showGoToLineDialog {
+                    GoToLineDialogView(viewModel: viewModel)
+                }
+            }
 
             ImmediateWindowView(text: $viewModel.immediateInput) {
                 viewModel.handleShortcut(.runImmediate)
             }
 
             StatusBarView(
-                modeLabel: viewModel.showRunOutput ? "Output" : "Immediate",
-                statusMessage: viewModel.statusMessage
+                modeLabel: viewModel.isRunning ? "Running" : "Immediate",
+                statusMessage: viewModel.statusMessage,
+                onStatusTap: viewModel.canJumpToError ? { viewModel.jumpToError() } : nil
             )
         }
         .background(QBTheme.background)
@@ -81,6 +98,49 @@ struct RetroIDEView: View {
             viewModel.handleExportedFile(result)
         }
     }
+
+    private var outputSplitBar: some View {
+        HStack(spacing: 8) {
+            Text("OUTPUT")
+                .font(QBTheme.monoSmall)
+                .foregroundStyle(QBTheme.menuText)
+            if viewModel.isRunning {
+                Text("Running...")
+                    .font(QBTheme.monoSmall)
+                    .foregroundStyle(QBTheme.statusSecondaryText)
+            }
+            Spacer(minLength: 0)
+            Button("Edit") {
+                viewModel.handleShortcut(.returnToEditor)
+            }
+            .font(QBTheme.monoSmall)
+            .foregroundStyle(QBTheme.menuText)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("returnToEditor")
+            if viewModel.isRunning {
+                Button("Stop") {
+                    viewModel.handleShortcut(.stop)
+                }
+                .font(QBTheme.monoSmall)
+                .foregroundStyle(QBTheme.menuText)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("stopProgram")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(QBTheme.menuBackground)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(QBTheme.menuText.opacity(0.45))
+                .frame(height: 1)
+        }
+    }
+
+    private func outputPaneHeight(in totalHeight: CGFloat) -> CGFloat {
+        let fraction: CGFloat = viewModel.hasGraphicsOutput ? 0.42 : 0.32
+        return max(120, totalHeight * fraction)
+    }
 }
 
 private struct RunOutputView: View {
@@ -98,26 +158,6 @@ private struct RunOutputView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                HStack {
-                    Text("Program Output")
-                        .font(QBTheme.monoSmall)
-                        .foregroundStyle(QBTheme.menuText)
-                    Spacer()
-                    if viewModel.isRunning {
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(0.7)
-                    }
-                    Button("Edit") {
-                        viewModel.handleShortcut(.returnToEditor)
-                    }
-                    .font(QBTheme.monoSmall)
-                    .foregroundStyle(QBTheme.menuText)
-                    .accessibilityIdentifier("returnToEditor")
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-
                 if hasGraphics {
                     GraphicsCanvasView(screen: viewModel.screen, revision: viewModel.screenRevision)
                         .layoutPriority(1)

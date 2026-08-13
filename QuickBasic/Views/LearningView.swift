@@ -6,6 +6,7 @@ struct LearningView: View {
     @SwiftUI.Environment(\.dismiss) private var dismiss
     @SwiftUI.Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var selectedLesson: Lesson?
+    @State private var completedIDs: Set<String> = LessonProgressStore.completedIDs()
 
     var body: some View {
         Group {
@@ -38,7 +39,12 @@ struct LearningView: View {
             }
             .navigationTitle(AppBranding.guideTitle)
             .navigationDestination(for: Lesson.self) { lesson in
-                LessonDetailView(lesson: lesson, viewModel: viewModel, onClose: { dismiss() })
+                LessonDetailView(
+                    lesson: lesson,
+                    viewModel: viewModel,
+                    onClose: { dismiss() },
+                    onProgressChange: { completedIDs = LessonProgressStore.completedIDs() }
+                )
             }
         }
     }
@@ -48,7 +54,12 @@ struct LearningView: View {
             lessonList
         } detail: {
             if let lesson = selectedLesson {
-                LessonDetailView(lesson: lesson, viewModel: viewModel, onClose: { dismiss() })
+                LessonDetailView(
+                    lesson: lesson,
+                    viewModel: viewModel,
+                    onClose: { dismiss() },
+                    onProgressChange: { completedIDs = LessonProgressStore.completedIDs() }
+                )
             } else {
                 ContentUnavailableView(
                     AppBranding.guideTitle,
@@ -68,8 +79,15 @@ struct LearningView: View {
 
     private func lessonLabel(_ lesson: Lesson) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Chapter \(lesson.chapter)")
-                .font(QBTheme.monoSmall)
+            HStack {
+                Text("Chapter \(lesson.chapter)")
+                    .font(QBTheme.monoSmall)
+                if completedIDs.contains(lesson.id) {
+                    Text("DONE")
+                        .font(QBTheme.monoSmall)
+                        .foregroundStyle(QBTheme.editorBackground)
+                }
+            }
             Text(lesson.title)
                 .font(.headline)
             Text(lesson.subtitle)
@@ -83,9 +101,11 @@ struct LessonDetailView: View {
     let lesson: Lesson
     @ObservedObject var viewModel: IDEViewModel
     var onClose: (() -> Void)?
+    var onProgressChange: (() -> Void)?
 
     @SwiftUI.Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showHints = false
+    @State private var checkResult: LessonCheckResult?
 
     var body: some View {
         ScrollView {
@@ -116,6 +136,19 @@ struct LessonDetailView: View {
                 BasicCodePreview(code: lesson.starterCode)
 
                 actionButtons
+
+                if let checkResult {
+                    Text(checkResult.passed ? "PASS" : "FAIL")
+                        .font(QBTheme.monoTitle)
+                        .foregroundStyle(QBTheme.editorBackground)
+                    if let error = checkResult.error {
+                        Text(error)
+                            .font(QBTheme.monoSmall)
+                    } else if !checkResult.passed {
+                        Text("Expected output to contain: \(lesson.expectedOutput ?? "")")
+                            .font(QBTheme.monoSmall)
+                    }
+                }
 
                 if showHints {
                     ForEach(lesson.hints, id: \.self) { hint in
@@ -153,20 +186,34 @@ struct LessonDetailView: View {
     }
 
     private var actionButtons: some View {
-        HStack(spacing: 10) {
-            SampleActionButton(title: "Open in Editor", icon: "doc.text", style: .primary) {
-                viewModel.loadLesson(lesson)
-                onClose?()
-            }
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                SampleActionButton(title: "Open in Editor", icon: "doc.text", style: .primary) {
+                    viewModel.loadLesson(lesson)
+                    onClose?()
+                }
 
-            SampleActionButton(title: "Run Lesson", icon: "play.fill", style: .accent) {
-                viewModel.loadLesson(lesson)
-                onClose?()
-                viewModel.runProgram()
+                SampleActionButton(title: "Run Lesson", icon: "play.fill", style: .accent) {
+                    viewModel.loadLesson(lesson)
+                    onClose?()
+                    viewModel.runProgram()
+                }
             }
+            HStack(spacing: 10) {
+                SampleActionButton(title: "Check", icon: "checkmark", style: .secondary) {
+                    Task {
+                        let result = await viewModel.checkLesson(lesson)
+                        checkResult = result
+                        if result.passed {
+                            LessonProgressStore.markComplete(lesson.id)
+                            onProgressChange?()
+                        }
+                    }
+                }
 
-            SampleActionButton(title: "Hints", icon: "lightbulb", style: .secondary) {
-                showHints.toggle()
+                SampleActionButton(title: "Hints", icon: "lightbulb", style: .secondary) {
+                    showHints.toggle()
+                }
             }
         }
     }

@@ -148,9 +148,13 @@ final class TabletBasicTests: XCTestCase {
         }
     }
 
-    func testLessonCatalogHasSixteenChapters() {
+    func testLessonCatalogHasSeventeenChapters() {
         let chapters = Set(LessonCatalog.all.map(\.chapter))
-        XCTAssertEqual(chapters.count, 16)
+        XCTAssertEqual(chapters.count, 17)
+        XCTAssertEqual(LessonCatalog.all.last?.id, "17-procedures")
+        XCTAssertTrue(
+            LessonCatalog.all.first(where: { $0.id == "04-if" })?.starterCode.contains("END IF") == true
+        )
     }
 
     func testSourceCursorTracksSelection() {
@@ -273,6 +277,201 @@ final class TabletBasicTests: XCTestCase {
         viewModel.stopProgram()
         try await waitForProgramFinish(viewModel)
         XCTAssertFalse(viewModel.outputText.contains("NEVER"))
+    }
+
+    @MainActor
+    func testUnsavedIndicatorAfterEdit() {
+        let viewModel = IDEViewModel()
+        viewModel.handleShortcut(.newFile)
+        XCTAssertFalse(viewModel.isDocumentDirty)
+        XCTAssertEqual(viewModel.documentTitle, "Untitled")
+
+        viewModel.sourceCode = "PRINT 1"
+        XCTAssertTrue(viewModel.isDocumentDirty)
+        XCTAssertEqual(viewModel.documentTitle, "Untitled*")
+    }
+
+    @MainActor
+    func testUndoRedoRestoresSource() {
+        let viewModel = IDEViewModel()
+        viewModel.handleShortcut(.newFile)
+        viewModel.sourceCode = "PRINT 1"
+        viewModel.sourceCode = "PRINT 2"
+        XCTAssertTrue(viewModel.canUndo)
+
+        viewModel.handleShortcut(.undo)
+        XCTAssertEqual(viewModel.sourceCode, "PRINT 1")
+        viewModel.handleShortcut(.redo)
+        XCTAssertEqual(viewModel.sourceCode, "PRINT 2")
+    }
+
+    func testSourceFindFindsAndWraps() {
+        let text = "PRINT \"Hello\"\nPRINT \"World\""
+        let first = SourceFind.find(in: text, query: "PRINT", startUTF16: 0)
+        XCTAssertEqual(first?.line, 1)
+        let afterFirst = (first?.utf16Range.location ?? 0) + 1
+        let second = SourceFind.find(in: text, query: "PRINT", startUTF16: afterFirst)
+        XCTAssertEqual(second?.line, 2)
+        let wrapped = SourceFind.find(in: text, query: "Hello", startUTF16: (text as NSString).length)
+        XCTAssertEqual(wrapped?.line, 1)
+    }
+
+    @MainActor
+    func testFindNextMovesCursor() {
+        let viewModel = IDEViewModel()
+        viewModel.handleShortcut(.newFile)
+        viewModel.sourceCode = "PRINT \"A\"\nPRINT \"B\""
+        viewModel.findQuery = "PRINT"
+        viewModel.cursorLine = 1
+        viewModel.cursorColumn = 1
+        viewModel.findNext(skipCurrent: false)
+        XCTAssertEqual(viewModel.cursorLine, 1)
+        viewModel.findNext()
+        XCTAssertEqual(viewModel.cursorLine, 2)
+    }
+
+    @MainActor
+    func testJumpToErrorUsesInterpreterLine() async throws {
+        let viewModel = IDEViewModel()
+        viewModel.handleShortcut(.newFile)
+        viewModel.sourceCode = """
+        PRINT "ok"
+        THIS IS NOT VALID BASIC
+        """
+        viewModel.runProgram()
+        try await waitForProgramFinish(viewModel)
+        XCTAssertNotNil(viewModel.lastErrorLine)
+        viewModel.handleShortcut(.jumpToError)
+        XCTAssertEqual(viewModel.cursorLine, viewModel.lastErrorLine)
+    }
+
+    @MainActor
+    func testImmediateModePreservesPriorProgramOutput() async throws {
+        let viewModel = IDEViewModel()
+        viewModel.handleShortcut(.newFile)
+        viewModel.sourceCode = "PRINT \"ALPHA\""
+        viewModel.runProgram()
+        try await waitForProgramFinish(viewModel)
+        XCTAssertTrue(viewModel.outputText.contains("ALPHA"), viewModel.outputText)
+
+        viewModel.immediateInput = "PRINT \"BETA\""
+        viewModel.runImmediate()
+        try await waitForProgramFinish(viewModel)
+        XCTAssertTrue(viewModel.outputText.contains("ALPHA"), viewModel.outputText)
+        XCTAssertTrue(viewModel.outputText.contains("BETA"), viewModel.outputText)
+
+        viewModel.immediateInput = "PRINT \"GAMMA\""
+        viewModel.runImmediate()
+        try await waitForProgramFinish(viewModel)
+        XCTAssertTrue(viewModel.outputText.contains("ALPHA"), viewModel.outputText)
+        XCTAssertTrue(viewModel.outputText.contains("BETA"), viewModel.outputText)
+        XCTAssertTrue(viewModel.outputText.contains("GAMMA"), viewModel.outputText)
+    }
+
+    @MainActor
+    func testStopCancelsRunningProgram() async throws {
+        let viewModel = IDEViewModel()
+        viewModel.handleShortcut(.newFile)
+        viewModel.sourceCode = """
+        DO
+            SLEEP 10
+        LOOP
+        """
+        viewModel.runProgram()
+        for _ in 0..<20 {
+            if viewModel.isRunning { break }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        XCTAssertTrue(viewModel.isRunning)
+        viewModel.handleShortcut(.stop)
+        try await waitForProgramFinish(viewModel)
+        XCTAssertFalse(viewModel.isRunning)
+        XCTAssertEqual(viewModel.statusMessage, "Stopped")
+    }
+
+    @MainActor
+    func testLiveOutputUpdatesWhileProgramRuns() async throws {
+        let viewModel = IDEViewModel()
+        viewModel.handleShortcut(.newFile)
+        viewModel.sourceCode = """
+        PRINT "FIRST"
+        SLEEP 0.2
+        PRINT "SECOND"
+        """
+        viewModel.runProgram()
+        var sawFirstWhileRunning = false
+        for _ in 0..<30 {
+            if viewModel.isRunning && viewModel.outputText.contains("FIRST") {
+                sawFirstWhileRunning = true
+                break
+            }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        try await waitForProgramFinish(viewModel)
+        XCTAssertTrue(sawFirstWhileRunning, "output should refresh before the program ends: \(viewModel.outputText)")
+        XCTAssertTrue(viewModel.outputText.contains("SECOND"))
+    }
+
+    func testLessonCheckerUsesShippedInterpreter() async throws {
+        let lesson = try XCTUnwrap(LessonCatalog.all.first(where: { $0.id == "01-hello" }))
+        let result = await LessonChecker.check(
+            source: lesson.starterCode,
+            expectedOutput: lesson.expectedOutput
+        )
+        XCTAssertTrue(result.passed, "\(result.error ?? "") \(result.output)")
+        XCTAssertTrue(LessonChecker.matches(actual: result.output, expected: lesson.expectedOutput))
+    }
+
+    func testChapterFourUsesBlockIf() async throws {
+        let lesson = try XCTUnwrap(LessonCatalog.all.first(where: { $0.id == "04-if" }))
+        XCTAssertTrue(lesson.starterCode.contains("END IF"))
+        XCTAssertFalse(lesson.starterCode.contains("GOTO"))
+        let result = await LessonChecker.check(
+            source: lesson.starterCode,
+            expectedOutput: lesson.expectedOutput
+        )
+        XCTAssertTrue(result.passed, result.error ?? result.output)
+        XCTAssertTrue(result.output.contains("Grade: B"), result.output)
+    }
+
+    func testChapterSeventeenProcedures() async throws {
+        let lesson = try XCTUnwrap(LessonCatalog.all.first(where: { $0.id == "17-procedures" }))
+        let result = await LessonChecker.check(
+            source: lesson.starterCode,
+            expectedOutput: lesson.expectedOutput
+        )
+        XCTAssertTrue(result.passed, result.error ?? result.output)
+        XCTAssertTrue(result.output.contains("Add(3, 4) ="), result.output)
+    }
+
+    func testLessonProgressPersistsLocally() {
+        let suite = "tabletbasic.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertFalse(LessonProgressStore.isComplete("01-hello", defaults: defaults))
+        LessonProgressStore.markComplete("01-hello", defaults: defaults)
+        XCTAssertTrue(LessonProgressStore.isComplete("01-hello", defaults: defaults))
+        XCTAssertTrue(LessonProgressStore.completedIDs(defaults: defaults).contains("01-hello"))
+    }
+
+    func testLanguageGuideMentionsNewSurface() {
+        let joined = BasicLanguageGuide.sections.map(\.content).joined(separator: "\n")
+        XCTAssertFalse(joined.contains("80 built-in"))
+        XCTAssertFalse(joined.contains("not supported yet"))
+        XCTAssertTrue(joined.contains("81 built-in"))
+        XCTAssertTrue(joined.contains("HEX$"))
+        XCTAssertTrue(joined.contains("INKEY$"))
+        XCTAssertTrue(joined.contains("LOOP WHILE"))
+        XCTAssertTrue(joined.contains("FUNCTION"))
+    }
+
+    @MainActor
+    func testCheckLessonHelperMarksExpectedOutput() async throws {
+        let viewModel = IDEViewModel()
+        let lesson = try XCTUnwrap(LessonCatalog.all.first(where: { $0.id == "01-hello" }))
+        viewModel.loadLesson(lesson)
+        let result = await viewModel.checkLesson(lesson)
+        XCTAssertTrue(result.passed, result.error ?? result.output)
     }
 
     @MainActor

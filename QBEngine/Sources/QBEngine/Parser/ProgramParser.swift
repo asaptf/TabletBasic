@@ -115,9 +115,9 @@ public struct ProgramParser {
         let header = headerLine.text.trimmingCharacters(in: .whitespaces)
         let headerTokens = tokenizeLine(header)
         var headerParser = LineParser(tokens: headerTokens, sourceLine: headerLine.sourceLine)
-        let condition = try headerParser.parseIfHeaderCondition()
+        let firstCondition = try headerParser.parseIfHeaderCondition()
 
-        var thenLines: [PhysicalLine] = []
+        var clauses: [(condition: Expr, lines: [PhysicalLine])] = [(firstCondition, [])]
         var elseLines: [PhysicalLine] = []
         var index = start + 1
         var inElse = false
@@ -136,15 +136,21 @@ public struct ProgramParser {
                 break
             }
 
-            if upper == "ELSE" || upper.hasPrefix("ELSE ") || upper.hasPrefix("ELSEIF ") {
+            if upper.hasPrefix("ELSEIF ") {
+                let condition = try parseElseIfCondition(trimmed, sourceLine: line.sourceLine)
+                clauses.append((condition, []))
+                inElse = false
+                index += 1
+                continue
+            }
+
+            if upper == "ELSE" || upper.hasPrefix("ELSE ") {
                 inElse = true
                 if upper.hasPrefix("ELSE ") {
                     let afterElse = trimmed.dropFirst(5).trimmingCharacters(in: .whitespaces)
                     if !afterElse.isEmpty {
                         elseLines.append(PhysicalLine(text: String(afterElse), sourceLine: line.sourceLine))
                     }
-                } else if upper.hasPrefix("ELSEIF ") {
-                    elseLines.append(PhysicalLine(text: trimmed, sourceLine: line.sourceLine))
                 }
                 index += 1
                 continue
@@ -153,14 +159,26 @@ public struct ProgramParser {
             if inElse {
                 elseLines.append(PhysicalLine(text: trimmed, sourceLine: line.sourceLine))
             } else {
-                thenLines.append(PhysicalLine(text: trimmed, sourceLine: line.sourceLine))
+                clauses[clauses.count - 1].lines.append(PhysicalLine(text: trimmed, sourceLine: line.sourceLine))
             }
             index += 1
         }
 
-        let thenStatements = try parseStatementPhysicalLines(thenLines)
-        let elseStatements = elseLines.isEmpty ? nil : try parseStatementPhysicalLines(elseLines)
-        return (.ifStmt(condition, thenStatements, elseStatements), index - start)
+        var trailingElse: [Statement]? = elseLines.isEmpty ? nil : try parseStatementPhysicalLines(elseLines)
+        for clause in clauses.reversed() {
+            let body = try parseStatementPhysicalLines(clause.lines)
+            trailingElse = [.ifStmt(clause.condition, body, trailingElse)]
+        }
+        guard let statement = trailingElse?.first else {
+            throw QBError.syntax("Empty IF block at line \(headerLine.sourceLine)")
+        }
+        return (statement, index - start)
+    }
+
+    private func parseElseIfCondition(_ line: String, sourceLine: Int) throws -> Expr {
+        let tokens = tokenizeLine(line)
+        var parser = LineParser(tokens: tokens, sourceLine: sourceLine)
+        return try parser.parseElseIfHeaderCondition()
     }
 
     private func parseSelectCaseBlock(
@@ -1044,6 +1062,13 @@ private struct LineParser {
 
     mutating func parseIfHeaderCondition() throws -> Expr {
         try consumeKeyword(.if)
+        let condition = try parseExpression()
+        try consumeKeyword(.then)
+        return condition
+    }
+
+    mutating func parseElseIfHeaderCondition() throws -> Expr {
+        try consumeKeyword(.elseif)
         let condition = try parseExpression()
         try consumeKeyword(.then)
         return condition

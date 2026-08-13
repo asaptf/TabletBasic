@@ -48,6 +48,7 @@ struct CodeEditorView: View {
     @Binding var text: String
     @Binding var cursorLine: Int
     @Binding var cursorColumn: Int
+    @Binding var command: EditorCommand
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var editorScrollOffset: CGFloat = 0
 
@@ -80,6 +81,7 @@ struct CodeEditorView: View {
 
             BasicTextEditor(
                 text: $text,
+                command: $command,
                 font: editorFont,
                 lineHeight: lineHeight,
                 textColor: UIColor(QBTheme.editorText),
@@ -100,6 +102,7 @@ struct CodeEditorView: View {
 
 private struct BasicTextEditor: UIViewRepresentable {
     @Binding var text: String
+    @Binding var command: EditorCommand
     let font: UIFont
     let lineHeight: CGFloat
     let textColor: UIColor
@@ -142,17 +145,24 @@ private struct BasicTextEditor: UIViewRepresentable {
         }
 
         let currentText = textView.text ?? ""
-        guard currentText != text else { return }
+        if currentText != text {
+            let selection = text.isEmpty
+                ? NSRange(location: 0, length: 0)
+                : textView.selectedRange
+            context.coordinator.applyStyledText(
+                to: textView,
+                text: text,
+                selection: selection
+            )
+            context.coordinator.reportSelection(in: textView)
+        }
 
-        let selection = text.isEmpty
-            ? NSRange(location: 0, length: 0)
-            : textView.selectedRange
-        context.coordinator.applyStyledText(
-            to: textView,
-            text: text,
-            selection: selection
-        )
-        context.coordinator.reportSelection(in: textView)
+        if command != .idle {
+            context.coordinator.perform(command, on: textView)
+            DispatchQueue.main.async {
+                command = .idle
+            }
+        }
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -184,6 +194,24 @@ private struct BasicTextEditor: UIViewRepresentable {
             let location = min(selection.location, length)
             let maxLength = max(0, length - location)
             textView.selectedRange = NSRange(location: location, length: min(selection.length, maxLength))
+        }
+
+        func perform(_ command: EditorCommand, on textView: UITextView) {
+            let current = textView.text ?? ""
+            switch command {
+            case .idle:
+                return
+            case .select(let range):
+                let length = (current as NSString).length
+                let location = min(range.location, length)
+                let maxLength = max(0, length - location)
+                textView.selectedRange = NSRange(location: location, length: min(range.length, maxLength))
+                textView.scrollRangeToVisible(textView.selectedRange)
+            case .goToLine(let line):
+                textView.selectedRange = SourceFind.utf16Range(ofLine: line, in: current)
+                textView.scrollRangeToVisible(textView.selectedRange)
+            }
+            reportSelection(in: textView)
         }
 
         func reportSelection(in textView: UITextView) {

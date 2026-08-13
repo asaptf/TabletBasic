@@ -3,6 +3,7 @@ import SwiftUI
 struct StatusBarView: View {
     let modeLabel: String
     let statusMessage: String
+    var onStatusTap: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 8) {
@@ -20,6 +21,10 @@ struct StatusBarView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .trailing)
+                    .onTapGesture {
+                        onStatusTap?()
+                    }
+                    .accessibilityAddTraits(onStatusTap == nil ? [] : .isButton)
             } else {
                 Spacer(minLength: 0)
             }

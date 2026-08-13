@@ -4,6 +4,7 @@ public final class QBInterpreter: @unchecked Sendable {
     private var parser = ProgramParser()
     public let executor = Executor()
     public private(set) var lastError: String?
+    public private(set) var lastErrorLine: Int?
 
     public var output: QBOutputHandler? {
         get { executor.output }
@@ -39,6 +40,12 @@ public final class QBInterpreter: @unchecked Sendable {
 
     public init() {}
 
+    private func lineNumber(in message: String) -> Int? {
+        let pattern = /line\s+(\d+)/
+        guard let match = message.lowercased().firstMatch(of: pattern) else { return nil }
+        return Int(match.1)
+    }
+
     public func parse(_ source: String) throws -> ParsedProgram {
         try parser.parse(source: source)
     }
@@ -46,16 +53,22 @@ public final class QBInterpreter: @unchecked Sendable {
     public func run(_ source: String) async {
         do {
             lastError = nil
+            lastErrorLine = nil
             isRunning = true
-            defer { isRunning = false }
+            defer {
+                isRunning = false
+                executor.clearStopRequest()
+            }
             environmentResetForRun()
             let program = try parser.parse(source: source)
             try await executor.execute(program: program)
         } catch QBError.programStopped {
             lastError = "Program stopped"
+            lastErrorLine = executor.currentSourceLine
             executor.output?.writeLine("Program stopped")
         } catch {
             lastError = error.localizedDescription
+            lastErrorLine = lineNumber(in: error.localizedDescription) ?? executor.currentSourceLine
             executor.output?.writeLine(error.localizedDescription)
         }
     }

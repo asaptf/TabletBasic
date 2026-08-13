@@ -62,8 +62,11 @@ public final class Executor: @unchecked Sendable {
         resumeRequested = false
         pauseLock.unlock()
         isPaused = false
-        shouldStop = false
         pauseReason = nil
+    }
+
+    public func clearStopRequest() {
+        shouldStop = false
     }
 
     public func resumeStep() {

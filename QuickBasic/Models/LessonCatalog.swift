@@ -95,16 +95,19 @@ enum LessonCatalog {
             ' Chapter 4: Conditional branching
             SCORE% = 85
             PRINT "Score:"; SCORE%
-            IF SCORE% >= 90 THEN PRINT "Grade: A": GOTO 99
-            IF SCORE% >= 80 THEN PRINT "Grade: B": GOTO 99
-            PRINT "Grade: C"
-            99 END
+            IF SCORE% >= 90 THEN
+                PRINT "Grade: A"
+            ELSEIF SCORE% >= 80 THEN
+                PRINT "Grade: B"
+            ELSE
+                PRINT "Grade: C"
+            END IF
             """,
             expectedOutput: "Score:",
             hints: [
-                "Conditions use =, <>, <, >, <=, and >= to compare values.",
-                "You can put a single statement on the same line: IF X > 0 THEN PRINT X",
-                "Chain several IF lines for grading scales, menus, and decision trees."
+                "A block IF can span several lines and ends with END IF.",
+                "ELSEIF tests the next condition only when earlier tests were false.",
+                "You can still write a one-line IF: IF X > 0 THEN PRINT X"
             ],
             chapter: 4,
             relatedSamples: ["COMPARE.BAS"]
@@ -472,6 +475,40 @@ enum LessonCatalog {
             ],
             chapter: 16,
             relatedSamples: ["STARS.BAS", "MOIRE.BAS", "BOXES.BAS", "SINEWAVE.BAS"]
+        ),
+        Lesson(
+            id: "17-procedures",
+            title: "SUB & FUNCTION",
+            subtitle: "Named procedures with arguments",
+            description: """
+            SUB and FUNCTION let you name a reusable block of code instead of jumping \
+            with GOSUB. A SUB performs an action; a FUNCTION returns a value you can \
+            use in an expression. Call a SUB by name, and assign a FUNCTION result to a variable.
+            """,
+            starterCode: """
+            ' Chapter 17: SUB and FUNCTION
+            PRINT "Main program"
+            Greet "TabletBasic"
+            SUM% = Add%(3, 4)
+            PRINT "Add(3, 4) ="; SUM%
+            END
+
+            SUB Greet (NAME$)
+                PRINT "Hello, "; NAME$
+            END SUB
+
+            FUNCTION Add% (A%, B%)
+                Add% = A% + B%
+            END FUNCTION
+            """,
+            expectedOutput: "Add(3, 4) =",
+            hints: [
+                "Put END before SUB/FUNCTION so the main program does not fall into them.",
+                "A FUNCTION returns a value by assigning to its own name: Add% = A% + B%",
+                "Argument names inside the procedure are local copies or aliases of the callers."
+            ],
+            chapter: 17,
+            relatedSamples: ["GOSUB.BAS"]
         )
     ]
 }

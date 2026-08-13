@@ -75,6 +75,11 @@ struct KeyboardShortcutsModifier: ViewModifier {
             .onKeyPress(.escape, phases: .down) { _ in
                 if viewModel.showWelcome {
                     viewModel.handleShortcut(.dismissWelcome)
+                } else if viewModel.showFindDialog || viewModel.showGoToLineDialog {
+                    viewModel.showFindDialog = false
+                    viewModel.showGoToLineDialog = false
+                } else if viewModel.isRunning {
+                    viewModel.handleShortcut(.stop)
                 } else if viewModel.showRunOutput {
                     viewModel.handleShortcut(.returnToEditor)
                 } else {
@@ -92,7 +97,27 @@ struct KeyboardShortcutsModifier: ViewModifier {
                 viewModel.handleShortcut(.run)
                 return .handled
             }
+            .onKeyPress(.init("f"), phases: .down) { press in
+                guard press.modifiers.contains(.command) else { return .ignored }
+                viewModel.handleShortcut(.find)
+                return .handled
+            }
+            .onKeyPress(.init("g"), phases: .down) { press in
+                guard press.modifiers.contains(.command) else { return .ignored }
+                viewModel.handleShortcut(.findNext)
+                return .handled
+            }
     }
+}
+
+private func inkeyString(from press: KeyPress) -> String {
+    if press.key == .return {
+        return "\r"
+    }
+    if press.key == .space {
+        return " "
+    }
+    return press.characters
 }
 
 extension View {

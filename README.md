@@ -18,8 +18,8 @@ being an emulator or a Microsoft product.
 - A keyboard-friendly retro IDE with DOS-style menus.
 - A built-in BASIC interpreter written in Swift.
 - Immediate mode for trying small expressions and statements quickly.
-- A learning guide with 16 step-by-step chapters covering the full language.
-- A sample program library with 80 built-in programs.
+- A learning guide with 17 step-by-step chapters covering the full language.
+- A sample program library with 81 built-in programs.
 - Open, save, and save-as for `.bas` files via the system file picker.
 - Interactive `INPUT` prompts while a program runs.
 - Text output plus simple graphics output inspired by classic `SCREEN 13`.
@@ -143,7 +143,6 @@ sample programs, and rendering text/graphics output.
 
 ## Roadmap Ideas
 
-- Better editing tools (undo stack, multi-cursor).
 - Additional SCREEN modes and palette control.
 - More sample programs and school curriculum packs.
 - Better diagnostics with source locations and fix suggestions.

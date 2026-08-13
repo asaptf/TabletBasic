@@ -14,7 +14,7 @@ enum BasicLanguageGuide {
             content: """
             TabletBasic is a retro BASIC learning environment for iPhone, iPad, and Mac. \
             Type a program in the editor, press F5 to run it, and read the output in the \
-            panel below. Use Help > Learning Guide for 16 step-by-step chapters.
+            panel below. Use Help > Learning Guide for 17 step-by-step chapters.
 
             A minimal program:
               PRINT "Hello, World!"
@@ -188,6 +188,17 @@ enum BasicLanguageGuide {
 
             Line numbers are optional but traditional for GOSUB targets. \
             Always place END before subroutine code so execution does not fall through.
+
+            Named procedures:
+              CALL Hello("World")
+              SUM% = Add%(3, 4)
+              END
+              SUB Hello (MSG$)
+                  PRINT MSG$
+              END SUB
+              FUNCTION Add% (A%, B%)
+                  Add% = A% + B%
+              END FUNCTION
             """
         ),
         Section(
@@ -287,6 +298,9 @@ enum BasicLanguageGuide {
               PSET (50, 50), 15
               PRESET (50, 50)                   ' erase pixel
               LOCATE 1, 1: PRINT "Text"
+              CONST PI = 3.14159
+              OPTION BASE 0
+              K$ = INKEY$
 
             Coordinates: (x, y) with origin top-left.
             Colors are palette indices 0–255 (mode 13 uses 0–15 prominently).
@@ -318,8 +332,8 @@ enum BasicLanguageGuide {
             id: "tips",
             title: "Tips",
             content: """
-            • Start with Help > Learning Guide — 16 chapters cover the full language.
-            • Open File > Open Sample Program for 80 built-in demos to study and modify.
+            • Start with Help > Learning Guide — 17 chapters cover the full language.
+            • Open File > Open Sample Program for 81 built-in demos to study and modify.
             • Use ' comments to explain your code; future-you will thank present-you.
             • Run often. Small steps make debugging easier than big rewrites.
             • In PRINT, semicolon (;) stays on the line; comma (,) jumps to the next zone.

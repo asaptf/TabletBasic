@@ -5,6 +5,21 @@ if CommandLine.arguments.contains("--school") {
     await runSchoolProbe()
 }
 
+if let printIndex = CommandLine.arguments.firstIndex(of: "--print"),
+   CommandLine.arguments.indices.contains(printIndex + 1) {
+    let source = CommandLine.arguments[printIndex + 1]
+    let interpreter = QBInterpreter()
+    let output = ConsoleOutputHandler()
+    interpreter.output = output
+    await interpreter.run(source)
+    if let error = interpreter.lastError {
+        fputs(error + "\n", stderr)
+        exit(1)
+    }
+    print(output.buffer, terminator: output.buffer.hasSuffix("\n") ? "" : "\n")
+    exit(0)
+}
+
 var parser = ProgramParser()
 var failures = 0
 

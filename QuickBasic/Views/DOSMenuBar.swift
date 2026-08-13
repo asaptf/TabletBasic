@@ -44,18 +44,23 @@ struct DOSMenuBar: View {
                 .init("Clear Output", action: .clear)
             ]),
             DOSMenuDefinition(title: "Edit", items: [
+                .init("Undo", action: .undo, enabled: viewModel.canUndo),
+                .init("Redo", action: .redo, enabled: viewModel.canRedo),
+                .separator,
                 .init("Find...", action: .find),
-                .init("Find Next", action: .findNext),
+                .init("Find Next", action: .findNext, enabled: !viewModel.findQuery.isEmpty),
+                .init("Go to Line...", action: .goToLine),
                 .separator,
                 .init("Insert Line Numbers", action: .insertLineNumber)
             ]),
             DOSMenuDefinition(title: "View", items: [
-                .init("Return to Editor", action: .returnToEditor)
+                .init("Return to Editor", action: .returnToEditor),
+                .init("Go to Error", action: .jumpToError, enabled: viewModel.canJumpToError)
             ]),
             DOSMenuDefinition(title: "Run", items: [
-                .init("Start", action: .run),
+                .init("Start", action: .run, enabled: !viewModel.isRunning),
                 .init("Restart", action: .run),
-                .init("Stop", action: .stop),
+                .init("Stop", action: .stop, enabled: viewModel.isRunning),
                 .separator,
                 .init("Step", action: .step),
                 .init("Continue", action: .continueRun),
@@ -86,7 +91,7 @@ struct DOSMenuBar: View {
                 regularMenuBarRow
             }
 
-            Text(viewModel.documentName)
+            Text(viewModel.documentTitle)
                 .font(compactLayout ? QBTheme.monoSmall : QBTheme.monoMenu)
                 .foregroundStyle(QBTheme.menuText)
                 .lineLimit(1)
