@@ -7,62 +7,69 @@ struct RetroIDEView: View {
     @State private var isMenuOpen = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            DOSMenuBar(viewModel: viewModel, isMenuOpen: $isMenuOpen)
-                .zIndex(isMenuOpen ? 100 : 0)
+        GeometryReader { container in
+            VStack(spacing: 0) {
+                DOSMenuBar(viewModel: viewModel, isMenuOpen: $isMenuOpen, containerSize: container.size)
+                    .zIndex(isMenuOpen ? 100 : 0)
 
-            ZStack {
-                QBTheme.background
+                ZStack {
+                    QBTheme.background
 
-                if viewModel.showWelcome {
-                    WelcomeDialogView(
-                        onEnter: { viewModel.handleShortcut(.dismissWelcomeToGuide) },
-                        onEscape: { viewModel.handleShortcut(.dismissWelcome) }
-                    )
-                } else {
-                    GeometryReader { geometry in
-                        VStack(spacing: 0) {
-                            CodeEditorView(
-                                text: $viewModel.sourceCode,
-                                cursorLine: $viewModel.cursorLine,
-                                cursorColumn: $viewModel.cursorColumn,
-                                command: $viewModel.editorCommand
-                            )
-                            .focused($editorFocused)
-                            .frame(maxHeight: .infinity)
+                    if viewModel.showWelcome {
+                        WelcomeDialogView(
+                            onEnter: { viewModel.handleShortcut(.dismissWelcomeToGuide) },
+                            onEscape: { viewModel.handleShortcut(.dismissWelcome) }
+                        )
+                    } else {
+                        GeometryReader { geometry in
+                            VStack(spacing: 0) {
+                                CodeEditorView(
+                                    text: $viewModel.sourceCode,
+                                    cursorLine: $viewModel.cursorLine,
+                                    cursorColumn: $viewModel.cursorColumn,
+                                    command: $viewModel.editorCommand
+                                )
+                                .focused($editorFocused)
+                                .frame(maxHeight: .infinity)
 
-                            outputSplitBar
+                                outputSplitBar
 
-                            RunOutputView(viewModel: viewModel)
-                                .frame(height: outputPaneHeight(in: geometry.size.height))
+                                RunOutputView(viewModel: viewModel)
+                                    .frame(height: outputPaneHeight(in: geometry.size.height))
+                            }
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay {
+                    if isMenuOpen {
+                        Color.black.opacity(0.001)
+                            .onTapGesture { isMenuOpen = false }
+                    }
+                }
+                .overlay {
+                    if viewModel.showFindDialog {
+                        FindDialogView(viewModel: viewModel)
+                    } else if viewModel.showGoToLineDialog {
+                        GoToLineDialogView(viewModel: viewModel)
+                    }
+                }
+
+                ImmediateWindowView(text: $viewModel.immediateInput) {
+                    viewModel.handleShortcut(.runImmediate)
+                }
+
+                StatusBarView(
+                    modeLabel: viewModel.isRunning ? "Running" : "Immediate",
+                    statusMessage: viewModel.statusMessage,
+                    onStatusTap: viewModel.canJumpToError ? { viewModel.jumpToError() } : nil
+                )
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay {
-                if isMenuOpen {
-                    Color.black.opacity(0.001)
-                        .onTapGesture { isMenuOpen = false }
+                if viewModel.showInputPrompt {
+                    InputPromptOverlay(viewModel: viewModel)
                 }
             }
-            .overlay {
-                if viewModel.showFindDialog {
-                    FindDialogView(viewModel: viewModel)
-                } else if viewModel.showGoToLineDialog {
-                    GoToLineDialogView(viewModel: viewModel)
-                }
-            }
-
-            ImmediateWindowView(text: $viewModel.immediateInput) {
-                viewModel.handleShortcut(.runImmediate)
-            }
-
-            StatusBarView(
-                modeLabel: viewModel.isRunning ? "Running" : "Immediate",
-                statusMessage: viewModel.statusMessage,
-                onStatusTap: viewModel.canJumpToError ? { viewModel.jumpToError() } : nil
-            )
         }
         .background(QBTheme.background)
         .onAppear { editorFocused = true }
@@ -138,8 +145,7 @@ struct RetroIDEView: View {
     }
 
     private func outputPaneHeight(in totalHeight: CGFloat) -> CGFloat {
-        let fraction: CGFloat = viewModel.hasGraphicsOutput ? 0.42 : 0.32
-        return max(120, totalHeight * fraction)
+        LayoutMetrics.outputPaneHeight(totalHeight: totalHeight, hasGraphics: viewModel.hasGraphicsOutput)
     }
 }
 
@@ -183,11 +189,6 @@ private struct RunOutputView: View {
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .background(QBTheme.background)
-        .overlay {
-            if viewModel.showInputPrompt {
-                InputPromptOverlay(viewModel: viewModel)
-            }
-        }
     }
 }
 
@@ -227,12 +228,19 @@ private struct InputPromptOverlay: View {
                     .accessibilityIdentifier("inputPromptField")
                     .onSubmit { viewModel.submitInputPrompt() }
 
-                Button("OK") {
-                    viewModel.submitInputPrompt()
+                HStack(spacing: 24) {
+                    Button("Stop") {
+                        viewModel.stopProgram()
+                    }
+                    .accessibilityIdentifier("inputPromptStop")
+
+                    Button("OK") {
+                        viewModel.submitInputPrompt()
+                    }
+                    .accessibilityIdentifier("inputPromptOK")
                 }
                 .font(QBTheme.dialogFont)
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("inputPromptOK")
             }
             .multilineTextAlignment(.center)
             .foregroundStyle(QBTheme.dialogText)

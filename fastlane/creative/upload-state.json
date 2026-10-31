@@ -1,0 +1,29 @@
+{
+  "assets": {
+    "header": {
+      "id": "ad800019-48ae-805d-8036-3172cb32c229",
+      "filename": "tabletbasic-header-v1.png",
+      "sha256": "ae5f75c0ba799666e838272e15b3bfddbf4a9fc762d4296439ffc6d06f8cd2cd",
+      "placement_type": "PRODUCT_PAGE_HEADER_ASSET",
+      "uploaded": true,
+      "state": "WAITING_FOR_REVIEW",
+      "spec_id": "1eb43b80-e0b7-4d96-bd32-47a42a8c5fed",
+      "review_item_id": "NGI3YzYxOGMtODI3Mi00Njk0LWI4ZjMtODk0ZDA3MjcyNGI2fDE1fGFkODAwMDE5LTQ4YWUtODA1ZC04MDM2LTMxNzJjYjMyYzIyOQ"
+    },
+    "search_results": {
+      "id": "a1000019-48ae-805d-8033-e4d54171f5af",
+      "filename": "tabletbasic-search-results-v1.png",
+      "sha256": "f25cab5562218b039fed6eedfb2197295084e941020c906f91ca2675449aa148",
+      "placement_type": "APP_STORE_SEARCH_RESULTS_ASSET",
+      "uploaded": true,
+      "state": "WAITING_FOR_REVIEW",
+      "spec_id": "d2ffa3b7-6c55-5cdf-8512-229d92791333",
+      "review_item_id": "NGI3YzYxOGMtODI3Mi00Njk0LWI4ZjMtODk0ZDA3MjcyNGI2fDE1fGExMDAwMDE5LTQ4YWUtODA1ZC04MDMzLWU0ZDU0MTcxZjVhZg"
+    }
+  },
+  "app_id": "6787096669",
+  "library_id": "6787096669",
+  "placement_blocker": "Creating a placement is not permitted in AppStoreVersion's current state - Creating a placement is not permitted in AppStoreVersion's current state",
+  "review_submission_id": "4b7c618c-8272-4694-b8f3-894d072724b6",
+  "review_state": "WAITING_FOR_REVIEW"
+}

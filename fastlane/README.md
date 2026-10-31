@@ -63,6 +63,14 @@ Build and upload App Store binary without metadata or screenshots
 
 Build and upload binary, metadata, and screenshots without submitting for review
 
+### ios publish
+
+```sh
+[bundle exec] fastlane ios publish
+```
+
+Build, upload, and submit an update for review, releasing automatically after approval
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.

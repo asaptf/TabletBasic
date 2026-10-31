@@ -26,6 +26,7 @@ struct DOSMenuDefinition: Identifiable {
 struct DOSMenuBar: View {
     @ObservedObject var viewModel: IDEViewModel
     @Binding var isMenuOpen: Bool
+    let containerSize: CGSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var openMenuTitle: String?
     @State private var compactMenuOpen = false
@@ -76,7 +77,7 @@ struct DOSMenuBar: View {
     }
 
     private var compactLayout: Bool {
-        LayoutMetrics.isCompact(horizontalSizeClass)
+        LayoutMetrics.isCompact(horizontalSizeClass) || containerSize.width < 600
     }
 
     private var menuBarRowHeight: CGFloat {
@@ -116,6 +117,9 @@ struct DOSMenuBar: View {
                 compactMenuOpen = false
                 highlightedIndex = 0
             }
+        }
+        .onChange(of: containerSize) { _, _ in
+            closeMenu()
         }
     }
 
@@ -254,8 +258,7 @@ struct DOSMenuBar: View {
     private var compactOverflowWidth: CGFloat {
         let maxLen = menus.flatMap(\.items).map(\.title.count).max() ?? 20
         let preferred = CGFloat(max(220, maxLen * 9 + 40))
-        let screenWidth = UIScreen.main.bounds.width
-        return min(screenWidth - 16, min(320, preferred))
+        return max(0, min(containerSize.width - 16, min(320, preferred)))
     }
 
     private var documentNameRowHeight: CGFloat {
@@ -273,20 +276,10 @@ struct DOSMenuBar: View {
 
     private var compactOverflowAvailableHeight: CGFloat {
         LayoutMetrics.compactOverflowAvailableHeight(
-            screenHeight: UIScreen.main.bounds.height,
+            screenHeight: containerSize.height,
             menuHeaderHeight: menuBarRowHeight + documentNameRowHeight,
-            safeAreaTop: keyWindowSafeAreaTop
+            safeAreaTop: 0
         )
-    }
-
-    private var keyWindowSafeAreaTop: CGFloat {
-        for scene in UIApplication.shared.connectedScenes {
-            guard let windowScene = scene as? UIWindowScene else { continue }
-            for window in windowScene.windows where window.isKeyWindow {
-                return window.safeAreaInsets.top
-            }
-        }
-        return 0
     }
 
     private func menuBarButton(_ menu: DOSMenuDefinition) -> some View {
@@ -315,24 +308,29 @@ struct DOSMenuBar: View {
     private func dosDropdown(menu: DOSMenuDefinition) -> some View {
         let itemWidth = dropdownWidth(for: menu)
 
-        return VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(menu.items.enumerated()), id: \.element.id) { index, item in
-                menuItemRow(item, menu: menu, width: itemWidth, highlighted: highlightedIndex == index)
-                    .onHover { hovering in
-                        if hovering && item.enabled {
-                            highlightedIndex = index
+        let idealHeight = CGFloat(menu.items.filter { !$0.isSeparator }.count) * 25
+            + CGFloat(menu.items.filter(\.isSeparator).count) * 7 + 4
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(menu.items.enumerated()), id: \.element.id) { index, item in
+                    menuItemRow(item, menu: menu, width: itemWidth, highlighted: highlightedIndex == index)
+                        .onHover { hovering in
+                            if hovering && item.enabled {
+                                highlightedIndex = index
+                            }
                         }
-                    }
+                }
             }
+            .padding(.vertical, 2)
         }
-        .padding(.vertical, 2)
+        .frame(width: min(itemWidth, max(0, containerSize.width - 8)),
+               height: min(idealHeight, compactOverflowAvailableHeight))
         .background(QBTheme.dosMenuBackground)
         .overlay(
             Rectangle()
                 .strokeBorder(QBTheme.dosMenuBorder, lineWidth: 2)
         )
         .shadow(color: .black.opacity(0.25), radius: 0, x: 1, y: 1)
-        .fixedSize()
     }
 
     @ViewBuilder

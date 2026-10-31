@@ -9,49 +9,14 @@ struct LearningView: View {
     @State private var completedIDs: Set<String> = LessonProgressStore.completedIDs()
 
     var body: some View {
-        Group {
-            if LayoutMetrics.isCompact(horizontalSizeClass) {
-                compactGuide
-            } else {
-                regularGuide
-            }
-        }
-        .onAppear {
-            if selectedLesson == nil {
-                selectedLesson = LessonCatalog.all.first
-            }
-        }
-    }
-
-    private var lessonList: some View {
-        List(LessonCatalog.all, selection: $selectedLesson) { lesson in
-            lessonRow(lesson)
-        }
-        .navigationTitle(AppBranding.guideTitle)
-    }
-
-    private var compactGuide: some View {
-        NavigationStack {
-            List(LessonCatalog.all) { lesson in
+        NavigationSplitView {
+            List(LessonCatalog.all, selection: $selectedLesson) { lesson in
                 NavigationLink(value: lesson) {
                     lessonLabel(lesson)
+                        .padding(.vertical, 4)
                 }
             }
             .navigationTitle(AppBranding.guideTitle)
-            .navigationDestination(for: Lesson.self) { lesson in
-                LessonDetailView(
-                    lesson: lesson,
-                    viewModel: viewModel,
-                    onClose: { dismiss() },
-                    onProgressChange: { completedIDs = LessonProgressStore.completedIDs() }
-                )
-            }
-        }
-    }
-
-    private var regularGuide: some View {
-        NavigationSplitView {
-            lessonList
         } detail: {
             if let lesson = selectedLesson {
                 LessonDetailView(
@@ -60,6 +25,7 @@ struct LearningView: View {
                     onClose: { dismiss() },
                     onProgressChange: { completedIDs = LessonProgressStore.completedIDs() }
                 )
+                .id(lesson.id)
             } else {
                 ContentUnavailableView(
                     AppBranding.guideTitle,
@@ -68,13 +34,16 @@ struct LearningView: View {
                 )
             }
         }
+        .onAppear { selectInitialLessonIfNeeded() }
+        .onChange(of: horizontalSizeClass) { _, _ in
+            selectInitialLessonIfNeeded()
+        }
     }
 
-    @ViewBuilder
-    private func lessonRow(_ lesson: Lesson) -> some View {
-        lessonLabel(lesson)
-            .padding(.vertical, 4)
-            .tag(lesson)
+    private func selectInitialLessonIfNeeded() {
+        if !LayoutMetrics.isCompact(horizontalSizeClass), selectedLesson == nil {
+            selectedLesson = LessonCatalog.all.first
+        }
     }
 
     private func lessonLabel(_ lesson: Lesson) -> some View {

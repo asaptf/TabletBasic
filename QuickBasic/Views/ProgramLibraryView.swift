@@ -28,50 +28,14 @@ struct ProgramLibraryView: View {
     }
 
     var body: some View {
-        Group {
-            if LayoutMetrics.isCompact(horizontalSizeClass) {
-                compactLibrary
-            } else {
-                regularLibrary
-            }
-        }
-        .onAppear {
-            selectedProgram = SampleProgramLibrary.all.first
-        }
-    }
-
-    private var programList: some View {
-        List {
-            ForEach(displayedPrograms, id: \.0) { category, programs in
-                Section(category.rawValue) {
-                    ForEach(programs) { program in
-                        programRow(program)
-                    }
-                }
-            }
-        }
-        .font(QBTheme.monoFont)
-        .modifier(ConditionalSampleSearch(isEnabled: enableSearch, text: $searchText))
-    }
-
-    private var compactLibrary: some View {
-        NavigationStack {
-            programList
-                .navigationTitle("Sample Programs")
-                .navigationDestination(for: SampleProgram.self) { program in
-                    ProgramDetailPane(program: program, viewModel: viewModel, onClose: { dismiss() })
-                }
-        }
-    }
-
-    private var regularLibrary: some View {
         NavigationSplitView {
             List(selection: $selectedProgram) {
                 ForEach(displayedPrograms, id: \.0) { category, programs in
                     Section(category.rawValue) {
                         ForEach(programs) { program in
-                            programRow(program)
-                                .tag(program)
+                            NavigationLink(value: program) {
+                                programRow(program)
+                            }
                         }
                     }
                 }
@@ -86,15 +50,25 @@ struct ProgramLibraryView: View {
                 ContentUnavailableView(
                     "Select a Program",
                     systemImage: "doc.text",
-                    description: Text("Choose one of 80 sample programs to load into the editor.")
+                    description: Text("Choose one of \(SampleProgramLibrary.programCount) sample programs to load into the editor.")
                 )
             }
+        }
+        .onAppear { selectInitialProgramIfNeeded() }
+        .onChange(of: horizontalSizeClass) { _, _ in
+            selectInitialProgramIfNeeded()
+        }
+    }
+
+    private func selectInitialProgramIfNeeded() {
+        if !LayoutMetrics.isCompact(horizontalSizeClass), selectedProgram == nil {
+            selectedProgram = SampleProgramLibrary.all.first
         }
     }
 
     @ViewBuilder
     private func programRow(_ program: SampleProgram) -> some View {
-        let label = VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(program.filename)
                 .font(QBTheme.monoTitle)
             Text(program.title)
@@ -102,13 +76,6 @@ struct ProgramLibraryView: View {
         }
         .accessibilityIdentifier("sample_\(program.filename)")
 
-        if LayoutMetrics.isCompact(horizontalSizeClass) {
-            NavigationLink(value: program) {
-                label
-            }
-        } else {
-            label
-        }
     }
 }
 

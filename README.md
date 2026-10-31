@@ -16,6 +16,7 @@ being an emulator or a Microsoft product.
 ## What It Includes
 
 - A keyboard-friendly retro IDE with DOS-style menus.
+- Adaptive iPhone Duo layouts that preserve the selected sample or lesson when folding and unfolding.
 - A built-in BASIC interpreter written in Swift.
 - Immediate mode for trying small expressions and statements quickly.
 - A learning guide with 17 step-by-step chapters covering the full language.
@@ -76,7 +77,7 @@ Xcode work, and regenerate it with XcodeGen when the project structure changes.
 
 ## Requirements
 
-- macOS with a recent full Xcode installation.
+- macOS with Xcode 27.1 or later for iPhone Duo release builds.
 - iOS 17 or newer target device/simulator.
 - Swift 6-capable toolchain.
 - XcodeGen, only if you need to regenerate the Xcode project.

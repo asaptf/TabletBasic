@@ -1,1 +1,3 @@
-Initial release of TabletBasic: a retro BASIC learning environment with a Swift interpreter, sample programs, a learning guide, immediate mode, and simple graphics.
+Ready for iPhone Duo: menus and editor adapt as you fold, unfold, and resize the app. Your selected sample program or lesson stays open across layout changes.
+
+This update also improves keyboard and INPUT prompt layout, fixes Find and Replace after editing a document, and keeps editor text and line numbers aligned when the window changes size.

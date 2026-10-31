@@ -68,18 +68,22 @@ platform :ios do
   end
 
   desc "Build an App Store archive"
-  lane :build_release do
+  lane :build_release do |options|
+    sdk_version = sh("xcrun --sdk iphoneos --show-sdk-version", log: false).strip
+    UI.user_error!("iPhone Duo releases require the iOS 27.1 SDK or later") if Gem::Version.new(sdk_version) < Gem::Version.new("27.1")
     sh("xcodegen generate --spec '#{File.join(ROOT, "project.yml")}'")
     build_app(
       project: File.join(ROOT, "TabletBasic.xcodeproj"),
       scheme: "TabletBasic",
       export_method: "app-store",
       output_directory: File.join(ROOT, "fastlane/build"),
+      archive_path: options[:archive_path],
+      skip_build_archive: !options[:archive_path].nil?,
+      skip_profile_detection: true,
       export_options: {
         method: "app-store-connect",
-        provisioningProfiles: {
-          "com.tabletbasic.app" => "com.tabletbasic.app AppStore"
-        }
+        signingStyle: "automatic",
+        teamID: "WV9GF23FQM"
       },
       xcargs: "-allowProvisioningUpdates",
       clean: true
@@ -87,10 +91,11 @@ platform :ios do
   end
 
   desc "Build and upload App Store binary without metadata or screenshots"
-  lane :upload_binary do
-    build_release
+  lane :upload_binary do |options|
+    build_release unless options[:ipa]
     deliver(
       **base_deliver_options,
+      ipa: options[:ipa] || lane_context[SharedValues::IPA_OUTPUT_PATH],
       skip_metadata: true,
       skip_screenshots: true,
       skip_binary_upload: false
@@ -101,6 +106,26 @@ platform :ios do
   lane :release do
     screenshots
     build_release
-    deliver(**base_deliver_options)
+    deliver(**base_deliver_options, skip_binary_upload: false)
+  end
+
+  desc "Build, upload, and submit an update for review, releasing automatically after approval"
+  lane :publish do |options|
+    skip_upload = options[:skip_binary_upload].to_s == "true"
+    build_release unless options[:ipa] || skip_upload
+    deliver(
+      **base_deliver_options,
+      ipa: skip_upload ? nil : (options[:ipa] || lane_context[SharedValues::IPA_OUTPUT_PATH]),
+      skip_binary_upload: skip_upload,
+      app_version: options[:app_version],
+      build_number: skip_upload ? options[:build_number] : nil,
+      skip_metadata: false,
+      skip_screenshots: true,
+      app_rating_config_path: File.join(ROOT, "fastlane/metadata/age_rating.json"),
+      release_notes: { "en-US" => File.read(File.join(ROOT, "fastlane/metadata/en-US/release_notes.txt")) },
+      submit_for_review: true,
+      automatic_release: true,
+      submission_information: { export_compliance_uses_encryption: false }
+    )
   end
 end

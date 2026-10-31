@@ -22,7 +22,9 @@ final class IDEViewModel: ObservableObject {
     @Published var showSaveFilePicker: Bool = false
     @Published var showFindDialog: Bool = false
     @Published var showGoToLineDialog: Bool = false
-    @Published var findQuery: String = ""
+    @Published var findQuery: String = "" {
+        didSet { findCursor = nil }
+    }
     @Published var goToLineText: String = ""
     @Published var editorCommand: EditorCommand = .idle
     @Published var documentName: String = "Untitled"
@@ -46,7 +48,7 @@ final class IDEViewModel: ObservableObject {
     private var inputContinuation: CheckedContinuation<String, Never>?
     private let consoleOutput = ConsoleOutputHandler()
     private var documentBookmark: Data?
-    private var findCursor: String.Index?
+    private var findCursor: Int?
     private var runTask: Task<Void, Never>?
     private var savedSnapshot: String = ""
     private var isApplyingHistory = false
@@ -101,7 +103,7 @@ final class IDEViewModel: ObservableObject {
 
         runTask = Task {
             let poll = Task { @MainActor in
-                while isRunning {
+                while isRunning && !Task.isCancelled {
                     isPaused = interpreter.isPaused
                     outputText = consoleOutput.buffer
                     screenRevision += 1
@@ -176,7 +178,7 @@ final class IDEViewModel: ObservableObject {
 
     func openFind() {
         showFindPanel = true
-        showFindDialog = true
+        showFindDialog = false
         findStatus = ""
         findCursor = nil
     }
@@ -412,11 +414,14 @@ final class IDEViewModel: ObservableObject {
         let query = findQuery
         guard !query.isEmpty else { return }
         let source = sourceCode
-        let start = findCursor ?? source.startIndex
-        if let range = source.range(of: query, options: [.caseInsensitive], range: start..<source.endIndex)
-            ?? source.range(of: query, options: [.caseInsensitive]) {
+        let start = findCursor ?? SourceFind.utf16Offset(line: cursorLine, column: cursorColumn, in: source)
+        if let match = SourceFind.find(in: source, query: query, startUTF16: start),
+           let range = Range(match.utf16Range, in: source) {
             sourceCode.replaceSubrange(range, with: findReplaceText)
-            findCursor = sourceCode.index(range.lowerBound, offsetBy: findReplaceText.count, limitedBy: sourceCode.endIndex)
+            findCursor = match.utf16Range.location + (findReplaceText as NSString).length
+            let position = SourceCursor.position(in: sourceCode, location: findCursor ?? 0)
+            cursorLine = position.line
+            cursorColumn = position.column
             findStatus = "Replaced"
             findNext(skipCurrent: false)
         } else {
@@ -535,6 +540,7 @@ final class IDEViewModel: ObservableObject {
     }
 
     private func recordEdit(from oldValue: String) {
+        findCursor = nil
         guard !isApplyingHistory, oldValue != sourceCode else { return }
         undoStack.append(oldValue)
         if undoStack.count > 200 {
@@ -544,6 +550,7 @@ final class IDEViewModel: ObservableObject {
     }
 
     private func replaceSource(_ text: String, markSaved: Bool, clearHistory: Bool) {
+        findCursor = nil
         isApplyingHistory = true
         sourceCode = text
         isApplyingHistory = false

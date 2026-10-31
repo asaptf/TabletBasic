@@ -1,6 +1,12 @@
 import SwiftUI
 
 enum LayoutMetrics {
+    static func outputPaneHeight(totalHeight: CGFloat, hasGraphics: Bool) -> CGFloat {
+        let available = max(0, totalHeight)
+        let fraction: CGFloat = hasGraphics ? 0.42 : 0.32
+        return min(available * 0.5, max(80, available * fraction))
+    }
+
     static func isCompact(_ sizeClass: UserInterfaceSizeClass?) -> Bool {
         sizeClass == .compact
     }
@@ -49,6 +55,6 @@ enum LayoutMetrics {
         menuHeaderHeight: CGFloat,
         safeAreaTop: CGFloat
     ) -> CGFloat {
-        screenHeight - safeAreaTop - menuHeaderHeight - compactBottomChromeHeight
+        max(0, screenHeight - safeAreaTop - menuHeaderHeight - compactBottomChromeHeight)
     }
 }

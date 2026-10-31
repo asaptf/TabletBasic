@@ -475,6 +475,44 @@ final class TabletBasicTests: XCTestCase {
     }
 
     @MainActor
+    func testReplaceAfterShorteningDocumentAndChangingQuery() {
+        let viewModel = IDEViewModel()
+        viewModel.sourceCode = "PRINT \"long previous document\""
+        viewModel.findQuery = "document"
+        viewModel.findReplaceText = "text"
+        viewModel.replaceNext()
+        viewModel.sourceCode = "😀 X X"
+        viewModel.cursorLine = 1
+        viewModel.cursorColumn = 1
+        viewModel.findQuery = "X"
+        viewModel.findReplaceText = "Y"
+        viewModel.replaceNext()
+        viewModel.replaceNext()
+        XCTAssertEqual(viewModel.sourceCode, "😀 Y Y")
+    }
+
+    @MainActor
+    func testFindPresentsOnlyOneInterface() {
+        let viewModel = IDEViewModel()
+        viewModel.handleShortcut(.find)
+        XCTAssertTrue(viewModel.showFindPanel)
+        XCTAssertFalse(viewModel.showFindDialog)
+    }
+
+    func testOutputPaneLeavesSpaceForEditorInShortWindows() {
+        for height: CGFloat in [0, 80, 160, 320, 800] {
+            for graphics in [false, true] {
+                let output = LayoutMetrics.outputPaneHeight(totalHeight: height, hasGraphics: graphics)
+                XCTAssertGreaterThanOrEqual(output, 0)
+                XCTAssertLessThanOrEqual(output, height / 2)
+            }
+        }
+        XCTAssertEqual(LayoutMetrics.compactOverflowAvailableHeight(
+            screenHeight: 100, menuHeaderHeight: 60, safeAreaTop: 0
+        ), 0)
+    }
+
+    @MainActor
     private func waitForProgramFinish(_ viewModel: IDEViewModel) async throws {
         for _ in 0..<50 {
             if !viewModel.isRunning { return }

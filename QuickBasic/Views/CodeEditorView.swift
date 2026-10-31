@@ -145,7 +145,7 @@ private struct BasicTextEditor: UIViewRepresentable {
         }
 
         let currentText = textView.text ?? ""
-        if currentText != text {
+        if currentText != text || textView.font != font {
             let selection = text.isEmpty
                 ? NSRange(location: 0, length: 0)
                 : textView.selectedRange
