@@ -15,7 +15,8 @@ final class SampleProgramsUITests: XCTestCase {
         SampleExpectation(filename: program.filename, outputContains: program.smokeTestMarker)
     }
 
-    override func setUpWithError() throws {
+    @MainActor
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["UI_TESTING"]
