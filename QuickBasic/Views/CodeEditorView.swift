@@ -129,7 +129,6 @@ private struct BasicTextEditor: UIViewRepresentable {
         textView.keyboardDismissMode = .interactive
         textView.accessibilityIdentifier = "sourceEditor"
         context.coordinator.applyStyledText(to: textView, text: text, selection: NSRange(location: 0, length: 0))
-        context.coordinator.attach(to: textView)
         context.coordinator.reportSelection(in: textView)
         return textView
     }
@@ -165,18 +164,16 @@ private struct BasicTextEditor: UIViewRepresentable {
         }
     }
 
+    @MainActor
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: BasicTextEditor
-        private var scrollObservation: NSKeyValueObservation?
 
         init(parent: BasicTextEditor) {
             self.parent = parent
         }
 
-        func attach(to textView: UITextView) {
-            scrollObservation = textView.observe(\.contentOffset, options: [.new]) { [weak self] view, _ in
-                self?.parent.onScroll(view.contentOffset.y)
-            }
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            parent.onScroll(scrollView.contentOffset.y)
         }
 
         func applyStyledText(to textView: UITextView, text: String, selection: NSRange) {
